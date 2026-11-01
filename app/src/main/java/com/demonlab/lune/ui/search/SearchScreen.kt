@@ -134,12 +134,14 @@ fun SearchScreen(
             }.sortedBy { it.name }
     }
     val allRealAlbums = remember(allSongs) {
-        allSongs.groupBy { it.album }
-            .map { (albumName, songs) ->
+        allSongs.groupBy { Album.keyFor(it.displayAlbumArtist, it.album) }
+            .map { (_, songs) ->
+                val albumName = songs.first().album.trim()
+                val albumArtist = songs.first().displayAlbumArtist.trim()
                 Album(
-                    id = albumName.hashCode().toLong(),
+                    id = Album.idFor(albumArtist, albumName),
                     name = albumName,
-                    artist = songs.firstOrNull { it.albumArtist.isNotBlank() }?.albumArtist ?: songs.first().artist,
+                    artist = albumArtist,
                     albumArtUri = songs.first().albumArtUri,
                     coverUrl = songs.first().coverUrl,
                     songs = songs.sortedBy { it.title }

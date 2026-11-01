@@ -862,12 +862,14 @@ fun MainScreen(
 
     val albumsList = remember(rawAllSongs, hiddenFolders.value, albumSortOption, albumSortAscending, albumCaseSensitive) {
         val base = rawAllSongs.filter { !hiddenFolders.value.contains(it.folderName) }
-            .groupBy { it.album }
-            .map { (albumName, songs) ->
+            .groupBy { Album.keyFor(it.displayAlbumArtist, it.album) }
+            .map { (_, songs) ->
+                val albumName = songs.first().album.trim()
+                val albumArtist = songs.first().displayAlbumArtist.trim()
                 Album(
-                    id = albumName.hashCode().toLong(),
+                    id = Album.idFor(albumArtist, albumName),
                     name = albumName,
-                    artist = songs.firstOrNull { it.albumArtist.isNotBlank() }?.albumArtist ?: songs.first().artist,
+                    artist = albumArtist,
                     albumArtUri = songs.first().albumArtUri,
                     coverUrl = songs.first().coverUrl,
                     songs = songs.sortedBy { it.title }
@@ -1505,7 +1507,7 @@ fun MainScreen(
                                             hasBlurBackground = hasBlurBackgroundMini && currentSong != null,
                                             isDarkTheme = isDarkThemeMini,
                                             customActiveColor = listActiveControlsColor,
-                                            activePlaylistId = currentSong?.album?.hashCode()?.toLong(),
+                                            activePlaylistId = currentSong?.let { Album.idFor(it.displayAlbumArtist, it.album) },
                                             category = "ALBUMS"
                                         )
                                     } else {
@@ -1514,7 +1516,7 @@ fun MainScreen(
                                             onAlbumClick = { selectedAlbum = it },
                                             bottomPadding = bottomPadding,
                                             hasBlurBackground = hasBlurBackgroundMini && currentSong != null,
-                                            activePlaylistId = currentSong?.album?.hashCode()?.toLong()
+                                            activePlaylistId = currentSong?.let { Album.idFor(it.displayAlbumArtist, it.album) }
                                         )
                                     }
                                 }
@@ -2402,7 +2404,10 @@ fun MainScreen(
                             if (!isAlbumView && albumRender.artist.isEmpty()) {
                                 visibleSongs.filter { it.artist.trim().equals(albumRender.name.trim(), ignoreCase = true) }
                             } else {
-                                visibleSongs.filter { it.album == albumRender.name }
+                                // Same identity as the grid, or a shared title pulls
+                                // the other artist's tracks into this album.
+                                val albumKey = Album.keyFor(albumRender.artist, albumRender.name)
+                                visibleSongs.filter { Album.keyFor(it.displayAlbumArtist, it.album) == albumKey }
                             }
                         }
                         else -> {
@@ -2802,13 +2807,16 @@ fun MainScreen(
                     onIsPlayerExpandedChange(false)
                     onSelectedFolderChange("ARTISTS")
                 },
-                onAlbumClick = { albumName ->
-                    val albumSongs = visibleSongs.filter { it.album.trim().equals(albumName.trim(), ignoreCase = true) }
+                onAlbumClick = { albumName, albumArtist ->
+                    val albumSongs = visibleSongs.filter {
+                        it.album.trim().equals(albumName.trim(), ignoreCase = true) &&
+                            it.displayAlbumArtist.trim().equals(albumArtist.trim(), ignoreCase = true)
+                    }
                     if (albumSongs.isNotEmpty()) {
                         val albumToOpen = Album(
-                            id = albumName.hashCode().toLong(),
+                            id = Album.idFor(albumArtist, albumName),
                             name = albumSongs.first().album,
-                            artist = albumSongs.firstOrNull { it.albumArtist.isNotBlank() }?.albumArtist ?: albumSongs.first().artist,
+                            artist = albumSongs.first().displayAlbumArtist,
                             albumArtUri = albumSongs.first().albumArtUri,
                             coverUrl = albumSongs.first().coverUrl,
                             songs = albumSongs.sortedWith(compareBy({ it.trackNumber }, { it.title }))

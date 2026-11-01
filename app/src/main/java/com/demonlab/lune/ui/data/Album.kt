@@ -48,7 +48,22 @@ data class Album(
     val albumArtUri: Uri?,
     val coverUrl: String?,
     val songs: List<Song>
-)
+) {
+    companion object {
+        /**
+         * Album identity is the album artist plus the title. Ten titles in this
+         * library belong to two different album artists, so the title alone
+         * merges two albums. [id] doubles as the playback playlist id, so every
+         * construction site has to use this.
+         */
+        fun keyFor(albumArtist: String, albumName: String): String =
+            albumArtist.trim().lowercase(java.util.Locale.ROOT) + "\u0000" +
+                albumName.trim().lowercase(java.util.Locale.ROOT)
+
+        fun idFor(albumArtist: String, albumName: String): Long =
+            keyFor(albumArtist, albumName).hashCode().toLong()
+    }
+}
 
 @Composable
 fun AlbumGrid(

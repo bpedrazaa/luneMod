@@ -101,7 +101,7 @@ fun ArtistAlbumsSection(
             verticalAlignment = Alignment.Top
         ) {
             items(section.albums, key = { it.id }) { album ->
-                val isPlaying = currentSong?.album?.hashCode()?.toLong() == album.id
+                val isPlaying = currentSong?.let { Album.idFor(it.displayAlbumArtist, it.album) } == album.id
                 ArtistAlbumCard(
                     album = album,
                     isPlaying = isPlaying,

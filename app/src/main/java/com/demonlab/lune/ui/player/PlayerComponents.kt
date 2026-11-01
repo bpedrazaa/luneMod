@@ -447,7 +447,7 @@ fun UnifiedMarqueeHeader(
     runtimeBitDepth: Int?,
     runtimeBitrate: Int?,
     onArtistClick: ((String) -> Unit)?,
-    onAlbumClick: ((String) -> Unit)?,
+    onAlbumClick: ((String, String) -> Unit)?,
     onAudioBadgesClick: () -> Unit,
     modifier: Modifier = Modifier,
     isCompact: Boolean = false,
@@ -548,7 +548,7 @@ fun UnifiedMarqueeHeader(
                         shape = RoundedCornerShape(percent = 50),
                         modifier = Modifier
                             .bounceClick(0.95f)
-                            .clickable { onAlbumClick?.invoke(song.album) }
+                            .clickable { onAlbumClick?.invoke(song.album, song.displayAlbumArtist) }
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -780,7 +780,7 @@ fun FullPlayer(
     onShowLyrics: () -> Unit,
     onRequestAudioPermission: () -> Unit,
     onArtistClick: ((String) -> Unit)? = null,
-    onAlbumClick: ((String) -> Unit)? = null,
+    onAlbumClick: ((String, String) -> Unit)? = null,
     expansionFraction: Float = 1f,
     miniCoverBounds: Rect? = null
 ) {

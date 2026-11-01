@@ -216,7 +216,7 @@ fun ResumeScreen(
                 .groupBy { it.album.trim() }
                 .map { (albumName, albumSongs) ->
                     Album(
-                        id = albumName.hashCode().toLong(),
+                        id = Album.idFor(albumSongs.first().displayAlbumArtist, albumName),
                         name = albumName,
                         artist = artistName,
                         albumArtUri = albumSongs.firstOrNull { it.albumArtUri != null }?.albumArtUri,

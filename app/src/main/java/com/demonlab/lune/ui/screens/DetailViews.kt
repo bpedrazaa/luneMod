@@ -761,10 +761,11 @@ fun AlbumDetailView(
                     !albumName.equals("unknown", ignoreCase = true)
                 }
                 .map { (albumName, albumSongs) ->
+                    val albumArtist = albumSongs.firstOrNull()?.displayAlbumArtist ?: ""
                     Album(
-                        id = albumName.hashCode().toLong(),
+                        id = Album.idFor(albumArtist, albumName),
                         name = albumName,
-                        artist = albumSongs.firstOrNull()?.artist ?: "",
+                        artist = albumArtist,
                         albumArtUri = albumSongs.firstOrNull()?.albumArtUri,
                         coverUrl = albumSongs.firstOrNull()?.coverUrl,
                         songs = albumSongs
