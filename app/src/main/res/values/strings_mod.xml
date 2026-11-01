@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Separate from app_name so the ten locale copies of app_name cannot override it. -->
+    <string name="mod_app_name">Lune Mod</string>
+</resources>
