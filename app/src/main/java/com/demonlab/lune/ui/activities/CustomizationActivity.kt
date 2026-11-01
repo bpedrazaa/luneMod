@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.Widgets
 
 import com.demonlab.lune.tools.PlaybackManager
 import com.demonlab.lune.ui.components.AppBlurBackdrop
+import com.demonlab.lune.ui.components.SectionUi
 import com.demonlab.lune.ui.utils.bounceClick
 
 class CustomizationActivity : ComponentActivity() {
@@ -327,7 +328,7 @@ fun CustomizationScreen(
                                 "PLAYLISTS" to Icons.AutoMirrored.Filled.QueueMusic,
                                 "ALBUMS" to Icons.Default.Album,
                                 "ARTISTS" to Icons.Default.Person,
-                                "ALBUM_ARTISTS" to Icons.Default.Groups,
+                                "ALBUM_ARTISTS" to SectionUi.icon("ALBUM_ARTISTS"),
                                 "GENRES" to Icons.Default.Category,
                                 "FOLDERS" to Icons.Default.Folder
                             )

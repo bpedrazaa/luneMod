@@ -261,13 +261,6 @@ class Lune : AppCompatActivity() {
             val TAB_FOLDERS = "FOLDERS"
 
             // LIFTED STRINGS
-            val sTabResume = stringResource(R.string.tab_resume)
-            val sTabMixes = stringResource(R.string.tab_mixes)
-            val sTabAll = stringResource(R.string.tab_all)
-            val sTabFavorites = stringResource(R.string.tab_favorites)
-            val sTabFolders = stringResource(R.string.tab_folders)
-            val sTabAlbums = stringResource(R.string.tab_albums_real)
-            val sTabArtists = stringResource(R.string.tab_artists)
             val sTabPlaylists = stringResource(R.string.playlists)
 
             // LIFTED STATES & LOGIC
@@ -676,16 +669,8 @@ fun MainScreen(
         }
     }
     val expansionProgress = playerExpansionFraction.value
-    val sTabResume = stringResource(R.string.tab_resume)
-    val sTabMixes = stringResource(R.string.tab_mixes)
-    val sTabAll = stringResource(R.string.tab_all)
-    val sTabFavorites = stringResource(R.string.tab_favorites)
-    val sTabFolders = stringResource(R.string.tab_folders)
-    val sTabAlbums = stringResource(R.string.tab_albums_real)
-    val sTabArtists = stringResource(R.string.tab_artists)
     val sTabAlbumArtists = stringResource(R.string.tab_album_artists)
     val sTabGenres = stringResource(R.string.tab_genres)
-    val sTabPlaylists = stringResource(R.string.playlists)
 
     val visibleFolders = remember(allFolders, hiddenFolders.value) {
         allFolders.filter { !hiddenFolders.value.contains(it) }
@@ -1626,7 +1611,7 @@ fun MainScreen(
                                             controlsColorPalette = controlsColorPalette,
                                             onToggleAlbumView = null,
                                             title = sTabAlbumArtists,
-                                            icon = Icons.Default.Groups
+                                            icon = SectionUi.icon("ALBUM_ARTISTS")
                                         )
                                     }
                                 }
@@ -2619,16 +2604,7 @@ fun MainScreen(
                                         isDarkTheme = isDarkThemeMini,
                                         useCustomControlsColor = useCustomControlsColor,
                                         controlsColorPalette = controlsColorPalette,
-                                        showSearchText = false,
-                                        sTabResume = sTabResume,
-                                        sTabMixes = sTabMixes,
-                                        sTabAll = sTabAll,
-                                        sTabFavorites = sTabFavorites,
-                                        sTabAlbums = sTabAlbums,
-                                        sTabArtists = sTabArtists,
-                                        sTabGenres = sTabGenres,
-                                        sTabPlaylists = sTabPlaylists,
-                                        sTabFolders = sTabFolders
+                                        showSearchText = false
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -2742,16 +2718,7 @@ fun MainScreen(
                                         isDarkTheme = isDarkThemeMini,
                                         useCustomControlsColor = useCustomControlsColor,
                                         controlsColorPalette = controlsColorPalette,
-                                        showSearchText = true,
-                                        sTabResume = sTabResume,
-                                        sTabMixes = sTabMixes,
-                                        sTabAll = sTabAll,
-                                        sTabFavorites = sTabFavorites,
-                                        sTabAlbums = sTabAlbums,
-                                        sTabArtists = sTabArtists,
-                                        sTabGenres = sTabGenres,
-                                        sTabPlaylists = sTabPlaylists,
-                                        sTabFolders = sTabFolders
+                                        showSearchText = true
                                     )
                                 }
                             }
@@ -2774,16 +2741,7 @@ fun MainScreen(
                             hasBlurBackground = hasBlurBackgroundMini,
                             isDarkTheme = isDarkThemeMini,
                             useCustomControlsColor = useCustomControlsColor,
-                            controlsColorPalette = controlsColorPalette,
-                            sTabResume = sTabResume,
-                            sTabMixes = sTabMixes,
-                            sTabAll = sTabAll,
-                            sTabFavorites = sTabFavorites,
-                            sTabAlbums = sTabAlbums,
-                            sTabArtists = sTabArtists,
-                            sTabGenres = sTabGenres,
-                            sTabPlaylists = sTabPlaylists,
-                            sTabFolders = sTabFolders
+                            controlsColorPalette = controlsColorPalette
                         )
                     }
                 }
@@ -3140,18 +3098,7 @@ fun MainScreen(
                     folders.forEach { folder ->
                         val isSelected = selectedFolder == folder
                         val isDefaultSection = defaultSectionTab == folder
-                        val label = when (folder) {
-                            "RESUME" -> sTabResume
-                            "MIXES" -> sTabMixes
-                            "ALL" -> sTabAll
-                            "FAVORITES" -> sTabFavorites
-                            "ALBUMS" -> sTabAlbums
-                            "ARTISTS" -> sTabArtists
-                            "GENRES" -> sTabGenres
-                            "PLAYLISTS" -> sTabPlaylists
-                            "FOLDERS" -> sTabFolders
-                            else -> folder
-                        }
+                        val label = SectionUi.labelRes(folder)?.let { stringResource(it) } ?: folder
 
                         Surface(
                             onClick = {
@@ -3179,18 +3126,7 @@ fun MainScreen(
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         val iconTint = if (isSelected) (if (blurColors.hasBlur && blurColors.isDark) Color.Black else MaterialTheme.colorScheme.onPrimary) else blurColors.textSecondaryColor
-                                        when (folder) {
-                                            "RESUME" -> Icon(Icons.Default.History, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
-                                            "MIXES" -> Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
-                                            "ALL" -> Icon(Icons.Default.LibraryMusic, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
-                                            "ALBUMS" -> Icon(Icons.Default.Album, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
-                                            "ARTISTS" -> Icon(Icons.Default.Person, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
-                                            "GENRES" -> Icon(Icons.Default.Category, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
-                                            "PLAYLISTS" -> Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
-                                            "FOLDERS" -> Icon(Icons.Default.Folder, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
-                                            "FAVORITES" -> Icon(Icons.Default.FavoriteBorder, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
-                                            else -> Icon(Icons.Default.Folder, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
-                                        }
+                                        Icon(SectionUi.icon(folder), contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
                                     }
                                 }
                                 Spacer(modifier = Modifier.width(16.dp))
@@ -3255,15 +3191,6 @@ fun UnifiedHeaderPill(
     useCustomControlsColor: Boolean = false,
     controlsColorPalette: Int = 0,
     showSearchText: Boolean = true,
-    sTabResume: String,
-    sTabMixes: String,
-    sTabAll: String,
-    sTabFavorites: String,
-    sTabAlbums: String,
-    sTabArtists: String,
-    sTabGenres: String,
-    sTabPlaylists: String,
-    sTabFolders: String,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -3396,18 +3323,7 @@ fun UnifiedHeaderPill(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // LEFT SIDE: Active Section Pill
-                val activeLabel = when(selectedFolder) {
-                    "RESUME" -> sTabResume
-                    "MIXES" -> sTabMixes
-                    "ALL" -> sTabAll
-                    "FAVORITES" -> sTabFavorites
-                    "ALBUMS" -> sTabAlbums
-                    "ARTISTS" -> sTabArtists
-                    "GENRES" -> sTabGenres
-                    "PLAYLISTS" -> sTabPlaylists
-                    "FOLDERS" -> sTabFolders
-                    else -> selectedFolder
-                }
+                val activeLabel = SectionUi.labelRes(selectedFolder)?.let { stringResource(it) } ?: selectedFolder
 
                 val isCurrentContext = playbackManager.activeCategory == selectedFolder && playbackManager.currentSong != null && playbackManager.activePlaylistId != -300L
 
@@ -3434,18 +3350,7 @@ fun UnifiedHeaderPill(
                             modifier = Modifier.size(30.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            when (selectedFolder) {
-                                "RESUME" -> Icon(Icons.Default.History, contentDescription = activeLabel, tint = onSelected, modifier = Modifier.size(22.dp))
-                                "MIXES" -> Icon(Icons.Default.AutoAwesome, contentDescription = activeLabel, tint = onSelected, modifier = Modifier.size(22.dp))
-                                "ALL" -> Icon(Icons.Default.LibraryMusic, contentDescription = activeLabel, tint = onSelected, modifier = Modifier.size(22.dp))
-                                "ALBUMS" -> Icon(Icons.Default.Album, contentDescription = activeLabel, tint = onSelected, modifier = Modifier.size(22.dp))
-                                "ARTISTS" -> Icon(Icons.Default.Person, contentDescription = activeLabel, tint = onSelected, modifier = Modifier.size(22.dp))
-                                "GENRES" -> Icon(Icons.Default.Category, contentDescription = activeLabel, tint = onSelected, modifier = Modifier.size(22.dp))
-                                "PLAYLISTS" -> Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = activeLabel, tint = onSelected, modifier = Modifier.size(22.dp))
-                                "FOLDERS" -> Icon(Icons.Default.Folder, contentDescription = activeLabel, tint = onSelected, modifier = Modifier.size(22.dp))
-                                "FAVORITES" -> Icon(Icons.Default.FavoriteBorder, contentDescription = activeLabel, tint = onSelected, modifier = Modifier.size(22.dp))
-                                else -> Icon(Icons.Default.Folder, contentDescription = activeLabel, tint = onSelected, modifier = Modifier.size(22.dp))
-                            }
+                            Icon(SectionUi.icon(selectedFolder), contentDescription = activeLabel, tint = onSelected, modifier = Modifier.size(22.dp))
                         }
                         Spacer(modifier = Modifier.width(6.dp))
                         AnimatedContent(

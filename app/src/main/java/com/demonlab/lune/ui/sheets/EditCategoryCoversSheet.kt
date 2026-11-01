@@ -36,6 +36,7 @@ import com.demonlab.lune.R
 import com.demonlab.lune.tools.CategoryCoverManager
 import com.demonlab.lune.tools.PlaybackManager
 import com.demonlab.lune.ui.components.AppBlurBackdrop
+import com.demonlab.lune.ui.components.SectionUi
 import com.demonlab.lune.ui.components.rememberBlurSheetColors
 import com.demonlab.lune.ui.utils.bounceClick
 import kotlinx.coroutines.launch
@@ -95,7 +96,7 @@ fun EditCategoryCoversSheet(
 
     val categoryIcon = when (category) {
         "ARTISTS" -> Icons.Default.Person
-        "ALBUM_ARTISTS" -> Icons.Default.Groups
+        "ALBUM_ARTISTS" -> SectionUi.icon("ALBUM_ARTISTS")
         "GENRES" -> Icons.Default.Category
         "FOLDERS" -> Icons.Default.Folder
         else -> Icons.Default.Album
