@@ -550,7 +550,9 @@ fun UnifiedMarqueeHeader(
                         shape = RoundedCornerShape(percent = 50),
                         modifier = Modifier
                             .bounceClick(0.95f)
-                            .clickable { onAlbumClick?.invoke(song.album, song.displayAlbumArtist) }
+                            .clickable(
+                                onClickLabel = stringResource(R.string.mod_open_album)
+                            ) { onAlbumClick?.invoke(song.album, song.displayAlbumArtist) }
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
