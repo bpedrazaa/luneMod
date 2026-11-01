@@ -81,7 +81,9 @@ object AudioTagReader {
         val weakFormat = extension in retrieverWeakExtensions
         val missingHiFiProps = extension in hiFiExtensions && (sampleRate == null || bitDepth == null)
         val missingBasicTags = title == null || artist == null || album == null
-        val needsFallback = !opened || weakFormat || missingHiFiProps || missingBasicTags
+        // The platform retriever returns no year for many MP3s even when the
+        // file carries one, so a missing year also earns the tag pass.
+        val needsFallback = !opened || weakFormat || missingHiFiProps || missingBasicTags || year == null
 
         if (needsFallback) {
             readWithJaudiotagger(file)?.let { fallback ->
@@ -96,6 +98,10 @@ object AudioTagReader {
                 trackNumber = trackNumber ?: fallback.trackNumber
                 year = year ?: fallback.year
             }
+        }
+
+        if (year == null) {
+            year = Id3YearReader.readYear(file)
         }
 
         return Tags(albumArtist, bitrate, sampleRate, bitDepth, title, artist, album, genre, trackNumber, year)

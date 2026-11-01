@@ -58,7 +58,7 @@ data class LibrarySync(
 class MusicProvider(private val context: Context) {
     companion object {
         // Bump when the cached Song shape changes; the next sync rebuilds it.
-        const val CACHE_VERSION = 4
+        const val CACHE_VERSION = 5
         val AUDIO_EXTENSIONS = setOf(
             "mp3", "flac", "wav", "aac", "m4a", "ogg", "opus", "wma", "alac", "dsf", "dff", "aiff", "ape"
         )
