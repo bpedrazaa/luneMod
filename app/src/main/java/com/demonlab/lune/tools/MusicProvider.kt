@@ -305,7 +305,11 @@ class MusicProvider(private val context: Context) {
                     if (!cached.tagGenre.isNullOrBlank() && (forceTagValues || genre.isNullOrBlank())) {
                         genre = CharsetUtils.sanitizeText(cached.tagGenre)
                     }
-                    if (cached.tagTrack != null && cached.tagTrack > 0 && (forceTagValues || trackNumber == 0)) {
+                    // MediaStore encodes a multi-disc track as disc * 1000 + track,
+                    // so the tag wins whenever the column carries that form.
+                    if (cached.tagTrack != null && cached.tagTrack > 0 &&
+                        (forceTagValues || trackNumber == 0 || trackNumber > 999)
+                    ) {
                         trackNumber = cached.tagTrack
                     }
                 }
@@ -332,6 +336,9 @@ class MusicProvider(private val context: Context) {
                 artist = CharsetUtils.sanitizeText(artist)
                 album = CharsetUtils.sanitizeText(album)
 
+                // MediaStore's track column can carry disc * 1000 + track even
+                // when no tag was cached.
+                if (trackNumber > 999) trackNumber %= 1000
                 val mediaStoreYear = if (yearColumn != -1) {
                     cursor.getInt(yearColumn).takeIf { it in 1000..2200 }
                 } else null
