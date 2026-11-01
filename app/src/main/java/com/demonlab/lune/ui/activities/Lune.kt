@@ -798,9 +798,18 @@ fun MainScreen(
     val folderSortAscending = if (selectedFolder == "FOLDERS") activeIsSortAscending else settingsManager.getIsSortAscending("folder_FOLDERS")
     val folderCaseSensitive = if (selectedFolder == "FOLDERS") activeIsCaseSensitive else settingsManager.getIsCaseSensitiveSort("folder_FOLDERS")
 
-    val hierarchyEntries = remember(visibleFolders, rawAllSongs, folderHierarchyMode, folderSortOption, folderSortAscending, folderCaseSensitive) {
+    // Counting songs per folder inside the list items or the comparator scanned
+    // the whole library once per folder row (millions of comparisons on scroll).
+    val songCountByFolder = remember(rawAllSongs) {
+        rawAllSongs.groupingBy { it.folderName }.eachCount()
+    }
+    val firstSongByFolder = remember(rawAllSongs) {
+        rawAllSongs.associateBy { it.folderName }
+    }
+
+    val hierarchyEntries = remember(visibleFolders, firstSongByFolder, songCountByFolder, folderHierarchyMode, folderSortOption, folderSortAscending, folderCaseSensitive) {
         val folderComparator: Comparator<String> = when (folderSortOption) {
-            "TRACK_COUNT" -> compareBy { folder -> rawAllSongs.count { it.folderName == folder } }
+            "TRACK_COUNT" -> compareBy { folder -> songCountByFolder[folder] ?: 0 }
             else -> if (folderCaseSensitive) compareBy { it } else compareBy { it.lowercase(java.util.Locale.getDefault()) }
         }
         val comparator = if (folderSortAscending) folderComparator else folderComparator.reversed()
@@ -809,7 +818,7 @@ fun MainScreen(
             visibleFolders.sortedWith(comparator).map { FolderEntry(it, 0, false) }
         } else {
             val dirMap = visibleFolders.mapNotNull { folder ->
-                rawAllSongs.firstOrNull { it.folderName == folder }
+                firstSongByFolder[folder]
                     ?.let { folder to it.path.substringBeforeLast("/") }
             }.toMap()
 
@@ -1883,9 +1892,9 @@ fun MainScreen(
                                     result
                                 }
 
-                                val folderDirMap = remember(visibleFolders, rawAllSongs) {
+                                val folderDirMap = remember(visibleFolders, firstSongByFolder) {
                                     visibleFolders.mapNotNull { folder ->
-                                        rawAllSongs.firstOrNull { it.folderName == folder }
+                                        firstSongByFolder[folder]
                                             ?.let { folder to it.path.substringBeforeLast("/") }
                                     }.toMap()
                                 }
@@ -1910,7 +1919,7 @@ fun MainScreen(
                                 ) {
                                     if (folderHierarchyMode) {
                                         itemsIndexed(filteredHierarchy) { index, entry ->
-                                            val songCount = visibleSongs.count { it.folderName == entry.name }
+                                            val songCount = songCountByFolder[entry.name] ?: 0
                                             val hasChildren = entry.name in parentFolders
                                             val isPlaying = isFolderCategory && playbackManager.activePlaylistId == entry.name.hashCode().toLong()
                                             val isAncestor = entry.name in ancestorNames
@@ -1995,7 +2004,7 @@ fun MainScreen(
                                         }
                                     } else {
                                         itemsIndexed(hierarchyEntries) { index, entry ->
-                                            val songCount = visibleSongs.count { it.folderName == entry.name }
+                                            val songCount = songCountByFolder[entry.name] ?: 0
                                             val isPlaying = isFolderCategory && playbackManager.activePlaylistId == entry.name.hashCode().toLong()
                                             val folderTitleColor = if (hasBlurBackgroundMini) Color.White else MaterialTheme.colorScheme.onSurface
                                             val folderSubColor = if (hasBlurBackgroundMini) Color.White.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSurfaceVariant
