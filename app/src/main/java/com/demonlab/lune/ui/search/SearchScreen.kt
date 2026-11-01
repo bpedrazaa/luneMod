@@ -950,7 +950,9 @@ internal fun computeSearchResults(
     if (searchTerms.isEmpty()) return emptySearchResults()
 
     val matchedSongs = allSongs.filter { song ->
-        val normalizedTarget = "${song.title} ${song.artist} ${song.album}".normalizeForSearch()
+        val base = "${song.title} ${song.artist} ${song.album}"
+        val target = if (song.albumArtist.isBlank()) base else "$base ${song.albumArtist}"
+        val normalizedTarget = target.normalizeForSearch()
         searchTerms.all { term -> normalizedTarget.contains(term) }
     }
     val matchedSongIds = matchedSongs.mapTo(HashSet()) { it.id }
