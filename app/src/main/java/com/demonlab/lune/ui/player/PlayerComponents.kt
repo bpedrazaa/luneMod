@@ -1578,7 +1578,7 @@ fun FullPlayer(
                                     ) {
                                         SongCoverImage(
                                             coverUrl = song.coverUrl ?: song.uri,
-                                            contentDescription = null,
+                                            contentDescription = song.album,
                                             modifier = Modifier.fillMaxSize(),
                                             shape = CircleShape,
                                             iconScale = 0.68f
@@ -1713,7 +1713,7 @@ fun FullPlayer(
                                             ) {
                                                 SongCoverImage(
                                                     coverUrl = targetSong.coverUrl ?: targetSong.uri,
-                                                    contentDescription = null,
+                                                    contentDescription = song.album,
                                                     modifier = Modifier.fillMaxSize(),
                                                     shape = activeShape,
                                                     iconScale = 0.68f
@@ -1743,7 +1743,12 @@ fun FullPlayer(
                                 onNext = handleNext,
                                 onPrevious = handlePrevious
                             )
-                        coverContent(coverModifier)
+                        coverContent(
+                            coverModifier.clickable(
+                                enabled = expansionFraction >= 0.99f && song.album.isNotBlank() && onAlbumClick != null,
+                                onClickLabel = context.getString(R.string.mod_open_album)
+                            ) { onAlbumClick?.invoke(song.album, song.displayAlbumArtist) }
+                        )
                     }
                 } else {
                     val coverModifier = if (isLandscape) {
@@ -1767,7 +1772,12 @@ fun FullPlayer(
                                 onPrevious = handlePrevious
                             )
                     }
-                    coverContent(coverModifier)
+                    coverContent(
+                        coverModifier.clickable(
+                            enabled = expansionFraction >= 0.99f && song.album.isNotBlank() && onAlbumClick != null,
+                            onClickLabel = context.getString(R.string.mod_open_album)
+                        ) { onAlbumClick?.invoke(song.album, song.displayAlbumArtist) }
+                    )
                 }
             }
         }

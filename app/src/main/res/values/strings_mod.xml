@@ -2,4 +2,5 @@
 <resources>
     <!-- Separate from app_name so the ten locale copies of app_name cannot override it. -->
     <string name="mod_app_name">Lune Mod</string>
+    <string name="mod_open_album">Open album</string>
 </resources>
