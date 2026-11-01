@@ -391,9 +391,9 @@ class SettingsManager(context: Context) {
         get() = prefs.getString("music_folder_uri", null)
         set(value) = prefs.edit().putString("music_folder_uri", value).apply()
         
-    var isInitialFolderScanPending: Boolean
-        get() = prefs.getBoolean("is_initial_folder_scan_pending", false)
-        set(value) = prefs.edit().putBoolean("is_initial_folder_scan_pending", value).apply()
+    var isLibraryScopePending: Boolean
+        get() = prefs.getBoolean("library_scope_pending", false)
+        set(value) = prefs.edit().putBoolean("library_scope_pending", value).apply()
 
     var showAllFoldersOnStart: Boolean
         get() = prefs.getBoolean("show_all_folders_on_start", false)

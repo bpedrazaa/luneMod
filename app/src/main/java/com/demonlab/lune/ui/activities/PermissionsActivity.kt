@@ -209,7 +209,7 @@ fun PermissionsScreen(onBack: () -> Unit) {
                         android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                     )
                     settingsManager.musicFolderUri = uri.toString()
-                    settingsManager.isInitialFolderScanPending = true
+                    settingsManager.isLibraryScopePending = true
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }

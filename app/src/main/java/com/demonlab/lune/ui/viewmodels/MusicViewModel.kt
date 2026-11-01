@@ -37,6 +37,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     private val musicProvider = MusicProvider(application)
     private val metadataManager = MetadataManager(application)
+    private val settingsManager = SettingsManager.getInstance(application)
 
     var allSongs by mutableStateOf<List<Song>>(emptyList())
         private set
@@ -89,7 +90,13 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadSongs(forceSync: Boolean = false) {
         viewModelScope.launch {
-            if (allSongs.isEmpty()) {
+            val scopeChanged = settingsManager.isLibraryScopePending
+            if (scopeChanged) {
+                allSongs = emptyList()
+                syncJob?.cancel()
+                enrichmentJob?.cancel()
+            }
+            if (allSongs.isEmpty() && !scopeChanged) {
                 val cached = withContext(Dispatchers.IO) {
                     musicProvider.getCachedSongs()
                 }
@@ -102,8 +109,8 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             val stale = System.currentTimeMillis() - lastSyncAt > SYNC_THROTTLE_MS
-            if (forceSync || allSongs.isEmpty() || stale) {
-                requestSync(scanForMissing = forceSync)
+            if (forceSync || scopeChanged || allSongs.isEmpty() || stale) {
+                requestSync(scanForMissing = forceSync || scopeChanged)
             } else {
                 isLoading = false
             }
@@ -143,44 +150,15 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        applyInitialFolderScan(sync.songs)
-
         val changed = withContext(Dispatchers.Default) { sync.songs != allSongs }
         if (changed) {
             allSongs = sync.songs
         }
         withContext(Dispatchers.Default) { updateRandomResumeArtists(sync.songs) }
         lastSyncAt = System.currentTimeMillis()
+        settingsManager.isLibraryScopePending = false
 
         startTagEnrichment(sync.pendingTags)
-    }
-
-    private fun applyInitialFolderScan(songs: List<Song>) {
-        val settingsManager = SettingsManager.getInstance(getApplication())
-        if (!settingsManager.isInitialFolderScanPending) return
-        if (!settingsManager.showAllFoldersOnStart) {
-            val uriStr = settingsManager.musicFolderUri
-            if (!uriStr.isNullOrBlank()) {
-                try {
-                    val uri = Uri.parse(uriStr)
-                    val pathSegment = uri.lastPathSegment?.substringAfterLast(":")
-                    if (!pathSegment.isNullOrBlank()) {
-                        val targetFolder = pathSegment.substringAfterLast("/")
-                        val allowedFolderNames = songs.filter { song ->
-                            song.path.contains("/$pathSegment/", ignoreCase = true) ||
-                                song.path.contains("/$targetFolder/", ignoreCase = true)
-                        }.map { it.folderName }.toSet()
-
-                        val allFolderNames = songs.map { it.folderName }.toSet()
-                        val foldersToHide = allFolderNames - allowedFolderNames
-                        settingsManager.hiddenFolders = foldersToHide
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-        }
-        settingsManager.isInitialFolderScanPending = false
     }
 
     private fun startTagEnrichment(pending: List<PendingTag>) {

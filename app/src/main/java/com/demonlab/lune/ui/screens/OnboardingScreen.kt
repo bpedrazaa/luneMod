@@ -735,7 +735,7 @@ fun ManageFilesPermissionStep(onNext: () -> Unit) {
                     Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 )
                 settingsManager.musicFolderUri = uri.toString()
-                settingsManager.isInitialFolderScanPending = true
+                settingsManager.isLibraryScopePending = true
                 isPermissionGranted = true
             } catch (e: Exception) {
                 e.printStackTrace()
