@@ -30,6 +30,7 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.demonlab.lune.R
 import com.demonlab.lune.data.Playlist
+import com.demonlab.lune.data.PlaylistSong
 import com.demonlab.lune.tools.PlaybackManager
 import com.demonlab.lune.tools.SettingsManager
 import com.demonlab.lune.tools.Song
@@ -45,7 +46,10 @@ import com.demonlab.lune.ui.playlist.PlaylistPreviewCovers
 import com.demonlab.lune.ui.utils.bounceClick
 import com.demonlab.lune.ui.utils.fastSmoothScrollToItem
 import com.demonlab.lune.ui.viewmodels.MusicViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class SearchResults(
     val songs: List<Song>,
@@ -158,80 +162,28 @@ fun SearchScreen(
     val sFilterFolder = stringResource(R.string.search_filter_folder)
     val sFilterCancel = stringResource(R.string.search_filter_cancel)
 
-    val searchResults = remember(query, allSongs, allAlbums, allRealAlbums, allPlaylists, allFolders, sTabFavorites, playlistMappings) {
-        if (query.isBlank()) return@remember SearchResults(emptyList(), emptyList(), emptyMap(), emptyMap(), emptyMap())
-        
-        val normalizedQuery = query.normalizeForSearch()
-        val searchTerms = normalizedQuery.split(Regex("\\s+")).filter { it.isNotBlank() }
-        if (searchTerms.isEmpty()) return@remember SearchResults(emptyList(), emptyList(), emptyMap(), emptyMap(), emptyMap())
-        
-        val matchedSongs = allSongs.filter { song ->
-            val searchTarget = "${song.title} ${song.artist} ${song.album}".normalizeForSearch()
-            searchTerms.all { term -> searchTarget.contains(term) }
+    // Typing is debounced and matched off the main thread: on a 10k-song
+    // library the per-keystroke filter was enough to drop input frames.
+    var searchResults by remember { mutableStateOf(emptySearchResults()) }
+    LaunchedEffect(query, allSongs, allAlbums, allRealAlbums, allPlaylists, allFolders, playlistMappings, sTabFavorites) {
+        val pendingQuery = query
+        if (pendingQuery.isBlank()) {
+            searchResults = emptySearchResults()
+            return@LaunchedEffect
         }
-        val matchedSongIds = matchedSongs.map { it.id }.toHashSet()
-
-        val albumResults = mutableMapOf<Album, List<Song>>()
-        allAlbums.forEach { album ->
-            val nameMatches = searchTerms.all { term -> album.name.normalizeForSearch().contains(term) }
-            val matchingSongs = album.songs.filter { it.id in matchedSongIds }
-            if (nameMatches || matchingSongs.isNotEmpty()) {
-                albumResults[album] = matchingSongs
-            }
+        delay(180)
+        searchResults = withContext(Dispatchers.Default) {
+            computeSearchResults(
+                query = pendingQuery,
+                allSongs = allSongs,
+                allAlbums = allAlbums,
+                allRealAlbums = allRealAlbums,
+                allPlaylists = allPlaylists,
+                playlistMappings = playlistMappings,
+                allFolders = allFolders,
+                favoritesTag = sTabFavorites
+            )
         }
-
-        val realAlbumResults = mutableMapOf<Album, List<Song>>()
-        allRealAlbums.forEach { album ->
-            val nameMatches = searchTerms.all { term -> album.name.normalizeForSearch().contains(term) }
-            val matchingSongs = album.songs.filter { it.id in matchedSongIds }
-            if (nameMatches || matchingSongs.isNotEmpty()) {
-                realAlbumResults[album] = matchingSongs
-            }
-        }
-
-        val playlistResults = mutableMapOf<Playlist, List<Song>>()
-        allPlaylists.forEach { playlist ->
-            val nameMatches = searchTerms.all { term -> playlist.name.normalizeForSearch().contains(term) }
-            
-            val playlistSongs = playlistMappings.filter { it.playlistId == playlist.id }
-                .mapNotNull { mapping -> allSongs.find { it.id == mapping.songId } }
-                
-            val matchingSongs = playlistSongs.filter { it.id in matchedSongIds }
-            
-            if (nameMatches || matchingSongs.isNotEmpty()) {
-                playlistResults[playlist] = matchingSongs
-            }
-        }
-
-        val favoriteSongs = matchedSongs.filter { it.isFavorite }
-
-        val tagResults = mutableMapOf<String, List<Song>>()
-        
-        if (favoriteSongs.isNotEmpty()) {
-            tagResults[sTabFavorites] = favoriteSongs
-        }
-
-        allFolders.forEach { folder ->
-            val normalizedFolder = folder.normalizeForSearch()
-            if (normalizedFolder == sTabFavorites.normalizeForSearch() || normalizedFolder == "favorites" || normalizedFolder == "favoritos") {
-                return@forEach
-            }
-            val nameMatches = searchTerms.all { term -> normalizedFolder.contains(term) }
-            if (nameMatches) {
-                val folderSongs = allSongs.filter { it.folderName == folder && it.id in matchedSongIds }
-                tagResults[folder] = folderSongs
-            }
-        }
-
-        matchedSongs.forEach { song ->
-            val folder = song.folderName
-            if (allFolders.contains(folder) && !tagResults.containsKey(folder)) {
-                val folderSongs = allSongs.filter { it.folderName == folder && it.id in matchedSongIds }
-                tagResults[folder] = folderSongs
-            }
-        }
-
-        SearchResults(matchedSongs, favoriteSongs, albumResults, playlistResults, tagResults, realAlbumResults)
     }
 
     BackHandler(onBack = onDismiss)
@@ -974,4 +926,97 @@ fun SearchScreen(
             }
         }
     }
+}
+
+private fun emptySearchResults() = SearchResults(
+    songs = emptyList(),
+    favoriteSongs = emptyList(),
+    albumResults = emptyMap(),
+    playlistResults = emptyMap(),
+    tagResults = emptyMap()
+)
+
+internal fun computeSearchResults(
+    query: String,
+    allSongs: List<Song>,
+    allAlbums: List<Album>,
+    allRealAlbums: List<Album>,
+    allPlaylists: List<Playlist>,
+    playlistMappings: List<PlaylistSong>,
+    allFolders: List<String>,
+    favoritesTag: String
+): SearchResults {
+    val searchTerms = query.normalizeForSearch().split(Regex("\\s+")).filter { it.isNotBlank() }
+    if (searchTerms.isEmpty()) return emptySearchResults()
+
+    val matchedSongs = allSongs.filter { song ->
+        val normalizedTarget = "${song.title} ${song.artist} ${song.album}".normalizeForSearch()
+        searchTerms.all { term -> normalizedTarget.contains(term) }
+    }
+    val matchedSongIds = matchedSongs.mapTo(HashSet()) { it.id }
+
+    fun matchAlbums(albums: List<Album>): MutableMap<Album, List<Song>> {
+        val results = mutableMapOf<Album, List<Song>>()
+        for (album in albums) {
+            val nameMatches = searchTerms.all { term -> album.name.normalizeForSearch().contains(term) }
+            val matchingSongs = album.songs.filter { it.id in matchedSongIds }
+            if (nameMatches || matchingSongs.isNotEmpty()) {
+                results[album] = matchingSongs
+            }
+        }
+        return results
+    }
+
+    val albumResults = matchAlbums(allAlbums)
+    val realAlbumResults = matchAlbums(allRealAlbums)
+
+    val playlistResults = mutableMapOf<Playlist, List<Song>>()
+    for (playlist in allPlaylists) {
+        val nameMatches = searchTerms.all { term -> playlist.name.normalizeForSearch().contains(term) }
+        val playlistSongs = playlistMappings.filter { it.playlistId == playlist.id }
+            .mapNotNull { mapping -> allSongs.find { it.id == mapping.songId } }
+        val matchingSongs = playlistSongs.filter { it.id in matchedSongIds }
+        if (nameMatches || matchingSongs.isNotEmpty()) {
+            playlistResults[playlist] = matchingSongs
+        }
+    }
+
+    val favoriteSongs = matchedSongs.filter { it.isFavorite }
+
+    val tagResults = mutableMapOf<String, List<Song>>()
+    if (favoriteSongs.isNotEmpty()) {
+        tagResults[favoritesTag] = favoriteSongs
+    }
+
+    allFolders.forEach { folder ->
+        val normalizedFolder = folder.normalizeForSearch()
+        if (normalizedFolder == favoritesTag.normalizeForSearch() ||
+            normalizedFolder == "favorites" ||
+            normalizedFolder == "favoritos"
+        ) {
+            return@forEach
+        }
+        val nameMatches = searchTerms.all { term -> normalizedFolder.contains(term) }
+        if (nameMatches) {
+            val folderSongs = allSongs.filter { it.folderName == folder && it.id in matchedSongIds }
+            tagResults[folder] = folderSongs
+        }
+    }
+
+    matchedSongs.forEach { song ->
+        val folder = song.folderName
+        if (allFolders.contains(folder) && !tagResults.containsKey(folder)) {
+            val folderSongs = allSongs.filter { it.folderName == folder && it.id in matchedSongIds }
+            tagResults[folder] = folderSongs
+        }
+    }
+
+    return SearchResults(
+        songs = matchedSongs,
+        favoriteSongs = favoriteSongs,
+        albumResults = albumResults,
+        playlistResults = playlistResults,
+        tagResults = tagResults,
+        realAlbumResults = realAlbumResults
+    )
 }
