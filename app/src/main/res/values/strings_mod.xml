@@ -4,4 +4,10 @@
     <string name="mod_app_name">Lune Mod</string>
     <string name="mod_open_album">Open album</string>
     <string name="mod_open_album_artist">Open album artist</string>
+    <string name="mod_info_title">Song info</string>
+    <string name="mod_info_short">Info</string>
+    <string name="mod_info_album_artist">Album artist</string>
+    <string name="mod_info_year">Year</string>
+    <string name="mod_info_folder">Folder</string>
+    <string name="mod_info_none">-</string>
 </resources>

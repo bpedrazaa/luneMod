@@ -678,6 +678,7 @@ fun MainScreen(
 
     var optionsSong by remember { mutableStateOf<Song?>(null) }
     var showOptionsSheet by remember { mutableStateOf(false) }
+    var infoSong by remember { mutableStateOf<Song?>(null) }
     var showSortSheet by remember { mutableStateOf(false) }
     var showSectionMenuSheet by remember { mutableStateOf(false) }
     var showMainAddToPlaylistDialog by remember { mutableStateOf(false) }
@@ -2932,11 +2933,19 @@ fun MainScreen(
         SongOptionsBottomSheet(
             song = optionsSong!!,
             onDismiss = { showOptionsSheet = false },
+            onInfoClick = { infoSong = optionsSong },
             onAddToPlaylistClick = { showMainAddToPlaylistDialog = true },
             onDeleteClick = {
                 songToDelete = optionsSong
                 showDeleteDialog = true
             }
+        )
+    }
+
+    if (infoSong != null) {
+        SongInfoBottomSheet(
+            song = infoSong!!,
+            onDismiss = { infoSong = null }
         )
     }
 

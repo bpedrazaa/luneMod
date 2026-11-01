@@ -120,6 +120,7 @@ import com.demonlab.lune.ui.sheets.AudioDetailsBottomSheet
 import com.demonlab.lune.ui.sheets.CustomRepeatDialog
 import com.demonlab.lune.ui.sheets.PlayerOptionsBottomSheet
 import com.demonlab.lune.ui.sheets.QueueBottomSheet
+import com.demonlab.lune.ui.sheets.SongInfoBottomSheet
 import com.demonlab.lune.ui.sheets.VisualizerSettingsBottomSheet
 import com.demonlab.lune.ui.theme.getControlsPrimaryColor
 import com.demonlab.lune.ui.utils.MaterialExpressiveScallopShape
@@ -873,6 +874,7 @@ fun FullPlayer(
 
     var showQueueSheet by remember { mutableStateOf(false) }
     var showOptionsSheet by remember { mutableStateOf(false) }
+    var showSongInfoSheet by remember { mutableStateOf(false) }
     var showAddToPlaylistInPlayer by remember { mutableStateOf(false) }
     var showVisualizerSettings by remember { mutableStateOf(false) }
     var showCustomRepeatDialog by remember { mutableStateOf(false) }
@@ -2483,7 +2485,18 @@ fun FullPlayer(
                 onShowLyrics = {
                     showOptionsSheet = false
                     onShowLyrics()
+                },
+                onShowSongInfo = {
+                    showOptionsSheet = false
+                    showSongInfoSheet = true
                 }
+            )
+        }
+
+        if (showSongInfoSheet) {
+            SongInfoBottomSheet(
+                song = song,
+                onDismiss = { showSongInfoSheet = false }
             )
         }
 

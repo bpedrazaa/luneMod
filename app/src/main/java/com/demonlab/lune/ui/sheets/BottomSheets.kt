@@ -60,6 +60,7 @@ import com.demonlab.lune.ui.components.SongItem
 import com.demonlab.lune.ui.components.AppBlurBackdrop
 import com.demonlab.lune.ui.components.rememberBlurSheetColors
 import com.demonlab.lune.ui.utils.bounceClick
+import com.demonlab.lune.ui.utils.formatDuration
 import com.demonlab.lune.ui.viewmodels.MusicViewModel
 import com.demonlab.lune.tools.PlaybackManager
 import com.demonlab.lune.tools.SettingsManager
@@ -83,7 +84,8 @@ fun SongOptionsBottomSheet(
     song: Song,
     onDismiss: () -> Unit,
     onAddToPlaylistClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    onInfoClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val playbackManager = remember { PlaybackManager.getInstance(context) }
@@ -231,6 +233,41 @@ fun SongOptionsBottomSheet(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 1.dp)
                         .bounceClick(),
+                    shape = RoundedCornerShape(4.dp),
+                    color = blurColors.itemContainerColor,
+                    border = blurColors.itemBorderColor?.let { BorderStroke(1.dp, it) }
+                ) {
+                    ListItem(
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        leadingContent = {
+                            Surface(
+                                shape = CircleShape,
+                                color = if (blurColors.hasBlur) blurColors.primaryTint.copy(alpha = 0.2f) else MaterialTheme.colorScheme.secondaryContainer,
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.Info,
+                                        contentDescription = null,
+                                        tint = if (blurColors.hasBlur) blurColors.primaryTint else MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        },
+                        modifier = Modifier.clickable {
+                            onDismiss()
+                            onInfoClick()
+                        }
+                    ) {
+                        Text(stringResource(R.string.mod_info_title), color = blurColors.textColor)
+                    }
+                }
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 1.dp)
+                        .bounceClick(),
                     shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 28.dp, bottomEnd = 28.dp),
                     color = blurColors.itemContainerColor,
                     border = blurColors.itemBorderColor?.let { BorderStroke(1.dp, it) }
@@ -262,6 +299,122 @@ fun SongOptionsBottomSheet(
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SongInfoBottomSheet(
+    song: Song,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val blurColors = rememberBlurSheetColors(song)
+    val dividerColor = blurColors.itemBorderColor ?: MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+    val none = stringResource(R.string.mod_info_none)
+
+    val format = song.format.uppercase().ifEmpty {
+        song.path.substringAfterLast('.', "").uppercase().ifEmpty { "AUDIO" }
+    }
+    val sampleRate = song.sampleRate?.takeIf { it > 0 }?.let {
+        if (it % 1000 == 0) "${it / 1000} kHz" else String.format(java.util.Locale.US, "%.1f", it / 1000f) + " kHz"
+    } ?: none
+    val bitDepth = song.bitDepth?.takeIf { it > 0 }?.let { "$it-bit" } ?: none
+    val bitrate = song.bitrate?.takeIf { it > 0 }?.let { "${it / 1000} kbps" } ?: none
+
+    val tags = listOf(
+        stringResource(R.string.edit_title) to song.title,
+        stringResource(R.string.edit_artist) to song.artist.ifBlank { none },
+        stringResource(R.string.mod_info_album_artist) to song.displayAlbumArtist.ifBlank { none },
+        stringResource(R.string.edit_album) to song.album.ifBlank { none },
+        stringResource(R.string.mod_info_year) to (song.year?.toString() ?: none),
+        stringResource(R.string.sort_track_number) to (if (song.trackNumber > 0) song.trackNumber.toString() else none),
+        stringResource(R.string.edit_genre) to (song.genre?.takeIf { it.isNotBlank() } ?: none),
+        stringResource(R.string.sort_duration) to formatDuration(song.duration),
+        stringResource(R.string.mod_info_folder) to (song.folderName.ifBlank { none }),
+        stringResource(R.string.audio_file_format) to format,
+        stringResource(R.string.audio_bitrate) to bitrate,
+        stringResource(R.string.audio_sample_rate) to sampleRate,
+        stringResource(R.string.audio_bit_depth) to bitDepth
+    )
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = blurColors.containerColor,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        dragHandle = null,
+        contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
+    ) {
+        AppBlurBackdrop(
+            hasBlurBackground = blurColors.hasBlur,
+            isDarkTheme = blurColors.isDark,
+            currentSong = song,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 24.dp)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    BottomSheetDefaults.DragHandle(
+                        color = if (blurColors.hasBlur) Color.White.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = stringResource(R.string.mod_info_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = blurColors.textColor
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = blurColors.itemContainerColor,
+                    border = BorderStroke(1.dp, blurColors.itemBorderColor ?: MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .heightIn(max = 380.dp)
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp)
+                    ) {
+                        tags.forEachIndexed { index, (label, value) ->
+                            AudioDetailItem(label = label, value = value, blurColors = blurColors)
+                            if (index < tags.lastIndex) {
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = dividerColor)
+                            }
+                        }
+                        if (song.path.isNotBlank()) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = dividerColor)
+                            AudioDetailItem(
+                                label = stringResource(R.string.audio_file_path),
+                                value = song.path,
+                                blurColors = blurColors,
+                                isCopyable = true,
+                                onCopy = {
+                                    val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                                    cm?.setPrimaryClip(android.content.ClipData.newPlainText("Path", song.path))
+                                    Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -775,10 +928,12 @@ fun QueueBottomSheet(
         }
     )
 
+    var infoSong by remember { mutableStateOf<Song?>(null) }
     if (showOptionsSheet && optionsSong != null) {
         SongOptionsBottomSheet(
             song = optionsSong!!,
             onDismiss = { showOptionsSheet = false },
+            onInfoClick = { infoSong = optionsSong },
             onAddToPlaylistClick = { 
                 showOptionsSheet = false
                 showAddToPlaylist = true 
@@ -787,6 +942,13 @@ fun QueueBottomSheet(
                 showOptionsSheet = false
                 Toast.makeText(context, "Funcionalidad de borrado disponible en la lista principal", Toast.LENGTH_SHORT).show()
             },
+        )
+    }
+
+    if (infoSong != null) {
+        SongInfoBottomSheet(
+            song = infoSong!!,
+            onDismiss = { infoSong = null }
         )
     }
 
@@ -1099,7 +1261,8 @@ fun PlayerOptionsBottomSheet(
     onDismiss: () -> Unit,
     onAddToPlaylistClick: () -> Unit = {},
     onShowVisualizerSettings: () -> Unit,
-    onShowLyrics: () -> Unit = {}
+    onShowLyrics: () -> Unit = {},
+    onShowSongInfo: () -> Unit = {}
 ) {
     val currentSong = playbackManager.currentSong
     val blurColors = rememberBlurSheetColors(currentSong)
@@ -1357,7 +1520,17 @@ fun PlayerOptionsBottomSheet(
                         )
                     }
 
-                    // 5. Share
+                    // 5. Song info
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        OptionButton(
+                            icon = Icons.Default.Info,
+                            label = stringResource(R.string.mod_info_short),
+                            active = false,
+                            onClick = onShowSongInfo
+                        )
+                    }
+
+                    // 6. Share
                     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                         OptionButton(
                             icon = Icons.Default.Share,
