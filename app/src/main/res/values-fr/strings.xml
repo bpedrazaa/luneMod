@@ -530,4 +530,6 @@
     <string name="restore_default_covers">Restaurer les pochettes par défaut</string>
     <string name="edit_covers">Modifier les pochettes</string>
     <string name="using_default_covers">Utilisation des pochettes originales des morceaux</string>
+    <string name="tab_album_artists">Artistes de l\'album</string>
+
 </resources>

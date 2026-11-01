@@ -530,4 +530,6 @@
     <string name="restore_default_covers">Восстановить обложки по умолчанию</string>
     <string name="edit_covers">Изменить обложки</string>
     <string name="using_default_covers">Используются оригинальные обложки песен</string>
+    <string name="tab_album_artists">Исполнители альбомов</string>
+
 </resources>

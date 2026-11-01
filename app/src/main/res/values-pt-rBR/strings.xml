@@ -530,4 +530,6 @@
     <string name="restore_default_covers">Restaurar capas padrão</string>
     <string name="edit_covers">Editar capas</string>
     <string name="using_default_covers">Usando as capas originais das músicas</string>
+    <string name="tab_album_artists">Artistas do álbum</string>
+
 </resources>

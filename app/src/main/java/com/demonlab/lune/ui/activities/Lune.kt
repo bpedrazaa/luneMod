@@ -501,6 +501,7 @@ class Lune : AppCompatActivity() {
                 if (hasFavorites) base.add("FAVORITES")
                 base.add("ALBUMS")
                 base.add("ARTISTS")
+                base.add("ALBUM_ARTISTS")
                 base.add("GENRES")
                 if (visibleFolders.isNotEmpty()) base.add("FOLDERS")
                 if (isSectionCustomizationEnabled) {
@@ -682,6 +683,7 @@ fun MainScreen(
     val sTabFolders = stringResource(R.string.tab_folders)
     val sTabAlbums = stringResource(R.string.tab_albums_real)
     val sTabArtists = stringResource(R.string.tab_artists)
+    val sTabAlbumArtists = stringResource(R.string.tab_album_artists)
     val sTabGenres = stringResource(R.string.tab_genres)
     val sTabPlaylists = stringResource(R.string.playlists)
 
@@ -913,6 +915,31 @@ fun MainScreen(
             else -> if (artistCaseSensitive) compareBy { it.name } else compareBy { it.name.lowercase(java.util.Locale.getDefault()) }
         }
         if (artistSortAscending) base.sortedWith(comparator) else base.sortedWith(comparator.reversed())
+    }
+
+    val albumArtistSortOption = if (selectedFolder == "ALBUM_ARTISTS") activeSortOption else settingsManager.getSortOption("folder_ALBUM_ARTISTS")
+    val albumArtistSortAscending = if (selectedFolder == "ALBUM_ARTISTS") activeIsSortAscending else settingsManager.getIsSortAscending("folder_ALBUM_ARTISTS")
+    val albumArtistCaseSensitive = if (selectedFolder == "ALBUM_ARTISTS") activeIsCaseSensitive else settingsManager.getIsCaseSensitiveSort("folder_ALBUM_ARTISTS")
+
+    val albumArtistsList = remember(rawAllSongs, hiddenFolders.value, albumArtistSortOption, albumArtistSortAscending, albumArtistCaseSensitive) {
+        val base = rawAllSongs.filter { !hiddenFolders.value.contains(it.folderName) }
+            .groupBy { it.displayAlbumArtist }
+            .map { (albumArtistName, songs) ->
+                Album(
+                    id = albumArtistName.hashCode().toLong(),
+                    name = albumArtistName,
+                    artist = "",
+                    albumArtUri = songs.first().albumArtUri,
+                    coverUrl = songs.first().coverUrl,
+                    songs = songs.sortedWith(compareBy({ it.album }, { it.trackNumber }, { it.title }))
+                )
+            }
+        val comparator: Comparator<Album> = when (albumArtistSortOption) {
+            "TRACK_COUNT" -> compareBy { it.songs.size }
+            "ALBUM_COUNT" -> compareBy { it.songs.map { s -> s.album }.distinct().size }
+            else -> if (albumArtistCaseSensitive) compareBy { it.name } else compareBy { it.name.lowercase(java.util.Locale.getDefault()) }
+        }
+        if (albumArtistSortAscending) base.sortedWith(comparator) else base.sortedWith(comparator.reversed())
     }
 
     val genreSortOption = if (selectedFolder == "GENRES") activeSortOption else settingsManager.getSortOption("folder_GENRES")
@@ -1327,6 +1354,7 @@ fun MainScreen(
                         when (folder) {
                             "RESUME", "MIXES", "ALL", "ALBUMS", "FOLDERS" -> visibleSongs
                             "ARTISTS" -> visibleSongs
+                            "ALBUM_ARTISTS" -> visibleSongs
                             "GENRES" -> visibleSongs
                             "FAVORITES" -> visibleSongs.filter { it.isFavorite }
                             "PLAYLISTS" -> emptyList()
@@ -1352,6 +1380,7 @@ fun MainScreen(
                             folder == "MIXES" -> "MIXES"
                             folder == "ALBUMS" -> "ALBUM_GRID"
                             folder == "ARTISTS" -> "ARTIST_GRID"
+                            folder == "ALBUM_ARTISTS" -> "ALBUM_ARTIST_GRID"
                             folder == "GENRES" -> "GENRE_GRID"
                             folder == "FOLDERS" -> "FOLDER_GRID"
                             folder == "PLAYLISTS" -> "PLAYLIST_GRID"
@@ -1554,6 +1583,67 @@ fun MainScreen(
                                             bottomPadding = bottomPadding,
                                             hasBlurBackground = hasBlurBackgroundMini && currentSong != null,
                                             activePlaylistId = currentSong?.artist?.hashCode()?.toLong()
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        "ALBUM_ARTIST_GRID" -> {
+                            var viewStyle by remember { mutableIntStateOf(settingsManager.albumViewStyle) }
+
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                AnimatedVisibility(
+                                    visible = showSectionHeaders,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut()
+                                ) {
+                                    HeaderSurface(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                                        hasBlurBackground = hasBlurBackgroundMini && currentSong != null
+                                    ) {
+                                        AlbumsListHeader(
+                                            albumCount = albumArtistsList.size,
+                                            viewStyle = viewStyle,
+                                            onToggleViewStyle = {
+                                                val newStyle = if (viewStyle == 0) 1 else 0
+                                                viewStyle = newStyle
+                                                settingsManager.albumViewStyle = newStyle
+                                            },
+                                            isAlbumView = false,
+                                            hasBlurBackground = hasBlurBackgroundMini && currentSong != null,
+                                            isDarkTheme = isDarkThemeMini,
+                                            isSortActive = activeSortOption != "ALPHABETICAL" || !activeIsSortAscending,
+                                            onSortClick = { showSortSheet = true },
+                                            useCustomControlsColor = useCustomControlsColor,
+                                            controlsColorPalette = controlsColorPalette,
+                                            onToggleAlbumView = null,
+                                            title = sTabAlbumArtists,
+                                            icon = Icons.Default.Groups
+                                        )
+                                    }
+                                }
+
+                                Box(modifier = Modifier.weight(1f)) {
+                                    if (viewStyle == 0) {
+                                        AlbumGrid(
+                                            albums = albumArtistsList,
+                                            onAlbumClick = { selectedAlbum = it },
+                                            bottomPadding = bottomPadding,
+                                            hasBlurBackground = hasBlurBackgroundMini && currentSong != null,
+                                            isDarkTheme = isDarkThemeMini,
+                                            customActiveColor = listActiveControlsColor,
+                                            activePlaylistId = currentSong?.displayAlbumArtist?.hashCode()?.toLong(),
+                                            category = "ALBUM_ARTISTS"
+                                        )
+                                    } else {
+                                        AlbumStackedCarousel(
+                                            albums = albumArtistsList,
+                                            onAlbumClick = { selectedAlbum = it },
+                                            bottomPadding = bottomPadding,
+                                            hasBlurBackground = hasBlurBackgroundMini && currentSong != null,
+                                            activePlaylistId = currentSong?.displayAlbumArtist?.hashCode()?.toLong()
                                         )
                                     }
                                 }
@@ -2316,6 +2406,7 @@ fun MainScreen(
                             }
                         }
                         "ARTISTS" -> visibleSongs.filter { it.artist.trim().equals(albumRender.name.trim(), ignoreCase = true) }
+                        "ALBUM_ARTISTS" -> visibleSongs.filter { it.displayAlbumArtist.trim().equals(albumRender.name.trim(), ignoreCase = true) }
                         "ALBUMS" -> {
                             if (!isAlbumView && albumRender.artist.isEmpty()) {
                                 visibleSongs.filter { it.artist.trim().equals(albumRender.name.trim(), ignoreCase = true) }
@@ -2336,7 +2427,12 @@ fun MainScreen(
                     }
                 }
                 val songsToDisplay = if (albumSongs.isNotEmpty()) albumSongs else albumRender.songs
-                val currentCategory = if (selectedFolder == "GENRES") "GENRES" else if (selectedFolder == "ARTISTS") "ARTISTS" else "ALBUMS"
+                val currentCategory = when (selectedFolder) {
+                    "GENRES" -> "GENRES"
+                    "ARTISTS" -> "ARTISTS"
+                    "ALBUM_ARTISTS" -> "ALBUM_ARTISTS"
+                    else -> "ALBUMS"
+                }
                 AlbumDetailView(
                     album = albumRender,
                     songs = songsToDisplay,
@@ -2365,7 +2461,9 @@ fun MainScreen(
                     isDarkTheme = isDarkThemeMini,
                     useCustomControlsColor = useCustomControlsColor,
                     controlsColorPalette = controlsColorPalette,
-                    isArtistView = currentCategory == "ARTISTS" || (!isAlbumView && albumRender.artist.isEmpty() && selectedFolder != "GENRES"),
+                    isArtistView = currentCategory == "ARTISTS" ||
+                        currentCategory == "ALBUM_ARTISTS" ||
+                        (!isAlbumView && albumRender.artist.isEmpty() && selectedFolder != "GENRES"),
                     category = currentCategory
                 )
             }
@@ -2842,6 +2940,11 @@ fun MainScreen(
                 "DURATION" to R.string.sort_duration
             )
             selectedFolder == "ARTISTS" -> listOf(
+                "ALPHABETICAL" to R.string.sort_alphabetical,
+                "TRACK_COUNT" to R.string.sort_track_count,
+                "ALBUM_COUNT" to R.string.sort_album_count
+            )
+            selectedFolder == "ALBUM_ARTISTS" -> listOf(
                 "ALPHABETICAL" to R.string.sort_alphabetical,
                 "TRACK_COUNT" to R.string.sort_track_count,
                 "ALBUM_COUNT" to R.string.sort_album_count

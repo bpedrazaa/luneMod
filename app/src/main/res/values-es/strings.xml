@@ -114,6 +114,7 @@
     <string name="tab_favorites">Favoritos</string>
     <string name="tab_songs">Canciones</string>
     <string name="tab_artists">Artistas</string>
+    <string name="tab_album_artists">Artistas del álbum</string>
     <string name="tab_albums_real">Álbumes</string>
     <string name="tab_albums">Artistas</string>
     <string name="tab_folders">Carpetas</string>

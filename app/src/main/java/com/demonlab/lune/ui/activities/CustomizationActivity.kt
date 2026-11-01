@@ -313,11 +313,13 @@ fun CustomizationScreen(
                         color = if (hasBlurBackground) (if (isDarkTheme) Color.White.copy(alpha = 0.09f) else Color.Black.copy(alpha = 0.22f)) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                         tonalElevation = if (hasBlurBackground) 0.dp else 1.dp
                     ) {
-                        Row(
+                        FlowRow(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            maxItemsInEachRow = 4
                         ) {
                             val sectionItems = listOf(
                                 "ALL" to Icons.Default.LibraryMusic,
@@ -325,6 +327,7 @@ fun CustomizationScreen(
                                 "PLAYLISTS" to Icons.AutoMirrored.Filled.QueueMusic,
                                 "ALBUMS" to Icons.Default.Album,
                                 "ARTISTS" to Icons.Default.Person,
+                                "ALBUM_ARTISTS" to Icons.Default.Groups,
                                 "GENRES" to Icons.Default.Category,
                                 "FOLDERS" to Icons.Default.Folder
                             )

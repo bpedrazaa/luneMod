@@ -53,6 +53,7 @@ object SongResolver {
         var bitrate: Int? = null
         var trackNumber = 0
         var mimeType: String? = null
+        var albumArtist: String? = null
 
         try {
             if (uri.scheme == "file") {
@@ -74,6 +75,7 @@ object SongResolver {
             bitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toIntOrNull()
             trackNumber = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER)?.toIntOrNull() ?: 0
             mimeType = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE)
+            albumArtist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
         } catch (e: Exception) {
             Log.w(TAG, "Failed extracting metadata with retriever for $uri", e)
         } finally {
@@ -121,6 +123,9 @@ object SongResolver {
                     val audioFile = org.jaudiotagger.audio.AudioFileIO.read(fileToRead)
                     val tag = audioFile.tag
                     if (tag != null) {
+                        if (albumArtist.isNullOrBlank()) {
+                            albumArtist = runCatching { tag.getFirst(org.jaudiotagger.tag.FieldKey.ALBUM_ARTIST) }.getOrNull()?.trim()
+                        }
                         val tTitle = runCatching { tag.getFirst(org.jaudiotagger.tag.FieldKey.TITLE) }.getOrNull()?.trim()
                         val tArtist = runCatching {
                             val a = tag.getFirst(org.jaudiotagger.tag.FieldKey.ARTIST)?.trim()
@@ -202,7 +207,10 @@ object SongResolver {
             format = format,
             bitrate = bitrate,
             trackNumber = trackNumber,
-            isHiRes = isHiFi
+            isHiRes = isHiFi,
+            albumArtist = CharsetUtils.sanitizeText(albumArtist ?: "")
+                .takeUnless { it.equals("<unknown>", ignoreCase = true) }
+                ?: ""
         )
     }
 

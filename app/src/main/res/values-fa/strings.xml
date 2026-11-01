@@ -526,4 +526,6 @@
     <string name="restore_default_covers">بازگردانی کاورهای پیش‌فرض</string>
     <string name="edit_covers">ویرایش کاورها</string>
     <string name="using_default_covers">استفاده از کاورهای اصلی آهنگ‌ها</string>
+    <string name="tab_album_artists">هنرمندان آلبوم</string>
+
 </resources>

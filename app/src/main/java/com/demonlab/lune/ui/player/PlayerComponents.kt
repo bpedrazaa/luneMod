@@ -957,6 +957,7 @@ fun FullPlayer(
             playbackManager.activeCategory == "RESUME" -> context.getString(R.string.tab_resume)
             playbackManager.activeCategory == "ALBUMS" -> song.album.ifBlank { context.getString(R.string.tab_albums_real) }
             playbackManager.activeCategory == "ARTISTS" -> song.artist.ifBlank { context.getString(R.string.tab_artists) }
+            playbackManager.activeCategory == "ALBUM_ARTISTS" -> song.displayAlbumArtist.ifBlank { context.getString(R.string.tab_album_artists) }
             playbackManager.activeCategory == "FOLDERS" -> song.folderName.ifBlank { context.getString(R.string.tab_folders) }
             playbackManager.activeCategory == "PLAYLISTS" -> context.getString(R.string.playlists)
             playbackManager.activeCategory == "MIXES" -> context.getString(R.string.tab_mixes)

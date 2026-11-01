@@ -95,6 +95,7 @@ fun EditCategoryCoversSheet(
 
     val categoryIcon = when (category) {
         "ARTISTS" -> Icons.Default.Person
+        "ALBUM_ARTISTS" -> Icons.Default.Groups
         "GENRES" -> Icons.Default.Category
         "FOLDERS" -> Icons.Default.Folder
         else -> Icons.Default.Album
