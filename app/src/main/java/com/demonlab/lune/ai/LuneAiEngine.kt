@@ -37,7 +37,17 @@ class LuneAiEngine private constructor(private val context: Context) {
     private var lastStartedTimeMs: Long = 0L
     private var previousPlayedSongId: Long? = null
 
+    /** Profiles depend on title, genre and duration only, which do not change within a scan. */
+    private val profileCache = java.util.concurrent.ConcurrentHashMap<Long, AudioProfile>()
+
     companion object {
+        /** Keeps the pairwise similarity work bounded on a 10,000 song library. */
+        private const val SHUFFLE_POOL_LIMIT = 400
+
+        /** Discovery compares every familiar song against every candidate. */
+        private const val DISCOVERY_FAMILIAR_LIMIT = 200
+        private const val DISCOVERY_CANDIDATE_LIMIT = 400
+
         @Volatile
         private var INSTANCE: LuneAiEngine? = null
 
@@ -169,6 +179,10 @@ class LuneAiEngine private constructor(private val context: Context) {
     )
 
     fun profileSong(song: Song): AudioProfile {
+        return profileCache.getOrPut(song.id) { computeProfile(song) }
+    }
+
+    private fun computeProfile(song: Song): AudioProfile {
         val titleLower = song.title.lowercase(Locale.getDefault())
         val genreLower = (song.genre ?: "").lowercase(Locale.getDefault())
 
@@ -287,11 +301,12 @@ class LuneAiEngine private constructor(private val context: Context) {
     // 3. SMART SHUFFLE (HARMONIC FLOW REORDERING)
     // ─────────────────────────────────────────────────────────────
 
-    fun generateSmartShuffle(songs: List<Song>, startingSong: Song? = null): List<Song> {
+    fun generateSmartShuffle(songs: List<Song>, startingSong: Song? = null, poolLimit: Int = SHUFFLE_POOL_LIMIT): List<Song> {
         val uniqueSongs = songs.distinctBy { it.id }
         if (uniqueSongs.size <= 2) return uniqueSongs
 
-        val remaining = uniqueSongs.toMutableList()
+        val pool = capPool(uniqueSongs, startingSong, poolLimit)
+        val remaining = pool.toMutableList()
         val result = mutableListOf<Song>()
 
         val seed = startingSong?.let { s -> remaining.find { it.id == s.id } }
@@ -326,6 +341,33 @@ class LuneAiEngine private constructor(private val context: Context) {
         return result
     }
 
+    /**
+     * Keeps the current song, fills most of the pool with the strongest
+     * affinities and the rest at random, so the queue stays varied but the
+     * pairwise scoring stays bounded.
+     */
+    private fun capPool(songs: List<Song>, seed: Song?, limit: Int): List<Song> {
+        if (limit <= 0 || songs.size <= limit) return songs
+
+        val chosen = LinkedHashMap<Long, Song>(limit)
+        seed?.let { chosen[it.id] = it }
+
+        val ranked = songs.asSequence()
+            .filter { it.id !in chosen }
+            .sortedByDescending { getSongAffinity(it.id) }
+            .toList()
+
+        val headCount = (limit * 3) / 4
+        for (song in ranked) {
+            if (chosen.size >= headCount) break
+            chosen[song.id] = song
+        }
+        for (song in ranked.drop(headCount).shuffled().take(limit - chosen.size)) {
+            chosen[song.id] = song
+        }
+        return chosen.values.toList()
+    }
+
     // ─────────────────────────────────────────────────────────────
     // 4. DISCOVERY MODE GENERATION (EXPLORING UNHEARD GEMS)
     // ─────────────────────────────────────────────────────────────
@@ -335,12 +377,15 @@ class LuneAiEngine private constructor(private val context: Context) {
 
         val uniqueSongs = allSongs.distinctBy { it.id }
 
-        // Partition songs into favorites/familiar vs unexplored
+        // Partition songs into favorites/familiar vs unexplored. Both sides are
+        // capped: the ranking compares every familiar song with every candidate.
         val familiar = uniqueSongs.filter { getSongAffinity(it.id) >= 12f }
-        val unexplored = uniqueSongs.filter { 
+            .sortedByDescending { getSongAffinity(it.id) }
+            .take(DISCOVERY_FAMILIAR_LIMIT)
+        val unexplored = uniqueSongs.filter {
             val interaction = storage.getInteraction(it.id)
             interaction.playCount <= 1 && !interaction.isFavorite
-        }
+        }.shuffled().take(DISCOVERY_CANDIDATE_LIMIT)
 
         if (unexplored.isEmpty()) {
             return generateSmartShuffle(uniqueSongs, seedSong)
@@ -423,6 +468,7 @@ class LuneAiEngine private constructor(private val context: Context) {
 
         engineScope.launch {
             try {
+                profileCache.clear()
                 val generated = mutableListOf<AiMix>()
                 val currentTime = TimeOfDay.current()
                 val dayType = DayType.current()

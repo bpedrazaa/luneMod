@@ -48,6 +48,9 @@ import com.demonlab.lune.ui.components.SongCoverImage
 import com.demonlab.lune.ui.components.rememberBlurSheetColors
 import com.demonlab.lune.ui.utils.bounceClick
 import com.demonlab.lune.ui.viewmodels.MusicViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.sin
 
 /**
@@ -143,6 +146,7 @@ fun AiMixesScreen(
     val aiEngine = remember { LuneAiEngine.getInstance(context) }
     val mixes by aiEngine.aiMixes.collectAsState()
     val blurColors = rememberBlurSheetColors(playbackManager.currentSong)
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(allSongs) {
         aiEngine.refreshMixes(allSongs)
@@ -165,8 +169,12 @@ fun AiMixesScreen(
                 blurColors = blurColors,
                 onSmartShuffleClick = {
                     if (allSongs.isNotEmpty()) {
-                        val shuffled = aiEngine.generateSmartShuffle(allSongs, playbackManager.currentSong)
-                        playbackManager.play(shuffled.first(), shuffled, category = "MIXES", playlistName = "Smart Shuffle")
+                        scope.launch {
+                            val shuffled = withContext(Dispatchers.Default) {
+                                aiEngine.generateSmartShuffle(allSongs, playbackManager.currentSong)
+                            }
+                            playbackManager.play(shuffled.first(), shuffled, category = "MIXES", playlistName = "Smart Shuffle")
+                        }
                     }
                 }
             )
@@ -190,9 +198,13 @@ fun AiMixesScreen(
                     hasBlur = hasBlurBackground,
                     onClick = {
                         if (allSongs.isNotEmpty()) {
-                            val discoveryQueue = aiEngine.generateDiscoveryQueue(allSongs, playbackManager.currentSong)
-                            if (discoveryQueue.isNotEmpty()) {
-                                playbackManager.play(discoveryQueue.first(), discoveryQueue, category = "MIXES", playlistName = discoveryQueue.first().title)
+                            scope.launch {
+                                val discoveryQueue = withContext(Dispatchers.Default) {
+                                    aiEngine.generateDiscoveryQueue(allSongs, playbackManager.currentSong)
+                                }
+                                if (discoveryQueue.isNotEmpty()) {
+                                    playbackManager.play(discoveryQueue.first(), discoveryQueue, category = "MIXES", playlistName = discoveryQueue.first().title)
+                                }
                             }
                         }
                     }
@@ -207,10 +219,18 @@ fun AiMixesScreen(
                     modifier = Modifier.weight(1f),
                     hasBlur = hasBlurBackground,
                     onClick = {
-                        val seed = playbackManager.currentSong ?: allSongs.maxByOrNull { aiEngine.getSongAffinity(it.id) } ?: allSongs.firstOrNull()
-                        if (seed != null) {
-                            val smartQueue = aiEngine.generateSmartShuffle(allSongs, seed)
-                            playbackManager.play(seed, smartQueue, category = "MIXES", playlistName = seed.title)
+                        scope.launch {
+                            val seed = withContext(Dispatchers.Default) {
+                                playbackManager.currentSong
+                                    ?: allSongs.maxByOrNull { aiEngine.getSongAffinity(it.id) }
+                                    ?: allSongs.firstOrNull()
+                            }
+                            if (seed != null) {
+                                val smartQueue = withContext(Dispatchers.Default) {
+                                    aiEngine.generateSmartShuffle(allSongs, seed)
+                                }
+                                playbackManager.play(seed, smartQueue, category = "MIXES", playlistName = seed.title)
+                            }
                         }
                     }
                 )
