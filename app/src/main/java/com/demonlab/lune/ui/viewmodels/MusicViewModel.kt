@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -42,8 +43,17 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     val visuallyDeletedIds = androidx.compose.runtime.mutableStateListOf<Long>()
 
-    val filteredSongs: List<Song>
-        get() = allSongs.filter { it.id !in visuallyDeletedIds }
+    /**
+     * Stable across recompositions while [allSongs] and the visual-delete set do
+     * not change; deriving it on every read made every caller re-filter 10k songs.
+     */
+    val filteredSongs: List<Song> by derivedStateOf {
+        if (visuallyDeletedIds.isEmpty()) {
+            allSongs
+        } else {
+            allSongs.filter { it.id !in visuallyDeletedIds }
+        }
+    }
 
     var randomResumeArtistNames by mutableStateOf<List<String>>(emptyList())
         private set
