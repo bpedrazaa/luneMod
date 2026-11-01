@@ -879,6 +879,7 @@ fun MainScreen(
             "ARTIST" -> if (albumCaseSensitive) compareBy { it.artist } else compareBy { it.artist.lowercase(java.util.Locale.getDefault()) }
             "TRACK_COUNT" -> compareBy { it.songs.size }
             "DATE_ADDED" -> compareBy { it.songs.maxOfOrNull { s -> s.dateAdded } ?: 0L }
+            "RELEASE_YEAR" -> compareBy { it.year ?: Int.MAX_VALUE }
             "DURATION" -> compareBy { it.songs.sumOf { s -> s.duration } }
             else -> if (albumCaseSensitive) compareBy { it.name } else compareBy { it.name.lowercase(java.util.Locale.getDefault()) }
         }
@@ -2941,6 +2942,7 @@ fun MainScreen(
             selectedFolder == "ALBUMS" -> listOf(
                 "ALPHABETICAL" to R.string.sort_alphabetical,
                 "ARTIST" to R.string.sort_artist,
+                "RELEASE_YEAR" to R.string.sort_release_year,
                 "TRACK_COUNT" to R.string.sort_track_count,
                 "DATE_ADDED" to R.string.sort_date_added,
                 "DURATION" to R.string.sort_duration

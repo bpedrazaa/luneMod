@@ -169,6 +169,9 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                 musicProvider.enrichTags(pending) { batch ->
                     applyTagBatch(batch)
                 }
+                // Only once every file has been read: until then the older rows
+                // stay in place and keep their album artists.
+                settingsManager.tagCacheVersion = MusicProvider.CACHE_VERSION
                 // One more pass so tag-derived titles/artists (WAV, DSD) land too.
                 lastSyncAt = 0L
                 val sync = withContext(Dispatchers.IO) { musicProvider.syncLibrary(false) }
@@ -191,10 +194,12 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             val sampleRate = tag.sampleRate ?: song.sampleRate
             val bitDepth = tag.bitDepth ?: song.bitDepth
             val bitrate = tag.bitrate ?: song.bitrate
+            val year = song.year ?: tag.year
             val isHiRes = song.isHiRes || looksHiRes(sampleRate, bitDepth, song.format)
 
             if (albumArtist == song.albumArtist && sampleRate == song.sampleRate &&
-                bitDepth == song.bitDepth && bitrate == song.bitrate && isHiRes == song.isHiRes
+                bitDepth == song.bitDepth && bitrate == song.bitrate && year == song.year &&
+                isHiRes == song.isHiRes
             ) {
                 song
             } else {
@@ -204,6 +209,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                     sampleRate = sampleRate,
                     bitDepth = bitDepth,
                     bitrate = bitrate,
+                    year = year,
                     isHiRes = isHiRes
                 )
             }

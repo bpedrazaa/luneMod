@@ -49,6 +49,10 @@ data class Album(
     val coverUrl: String?,
     val songs: List<Song>
 ) {
+    /** Release year from the tracks; they agree on it in this library. */
+    val year: Int?
+        get() = songs.mapNotNull { it.year }.minOrNull()
+
     companion object {
         /**
          * Album identity is the album artist plus the title. Ten titles in this

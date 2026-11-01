@@ -152,6 +152,15 @@ class SettingsManager(context: Context) {
         get() = prefs.getInt("library_cache_hash", 0)
         set(value) = prefs.edit().putInt("library_cache_hash", value).apply()
 
+    /**
+     * Tag-cache epoch. Rows written under an older epoch are re-read, but kept
+     * meanwhile: dropping them would blank album artists and split albums
+     * until the rescan reaches them.
+     */
+    var tagCacheVersion: Int
+        get() = prefs.getInt("tag_cache_version", 0)
+        set(value) = prefs.edit().putInt("tag_cache_version", value).apply()
+
     var isSortAscending: Boolean
         get() = prefs.getBoolean("is_sort_ascending", true)
         set(value) = prefs.edit().putBoolean("is_sort_ascending", value).apply()

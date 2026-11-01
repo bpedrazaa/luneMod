@@ -58,7 +58,7 @@ data class LibrarySync(
 class MusicProvider(private val context: Context) {
     companion object {
         // Bump when the cached Song shape changes; the next sync rebuilds it.
-        const val CACHE_VERSION = 3
+        const val CACHE_VERSION = 4
         val AUDIO_EXTENSIONS = setOf(
             "mp3", "flac", "wav", "aac", "m4a", "ogg", "opus", "wma", "alac", "dsf", "dff", "aiff", "ape"
         )
@@ -173,6 +173,7 @@ class MusicProvider(private val context: Context) {
             MediaStore.Audio.Media.DATA,
             MediaStore.Audio.Media.DATE_ADDED,
             MediaStore.Audio.Media.TRACK,
+            MediaStore.Audio.Media.YEAR,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 MediaStore.Audio.Media.GENRE
             } else {
@@ -191,6 +192,10 @@ class MusicProvider(private val context: Context) {
         // Include songs flagged by MediaStore as IS_MUSIC, or any audio file that is not a system sound (ringtone/alarm/notification)
         val selection = "(${MediaStore.Audio.Media.IS_MUSIC} != 0 OR (${MediaStore.Audio.Media.IS_RINGTONE} == 0 AND ${MediaStore.Audio.Media.IS_NOTIFICATION} == 0 AND ${MediaStore.Audio.Media.IS_ALARM} == 0))"
         val sortOrder = "${MediaStore.Audio.Media.TITLE} ASC"
+
+        // A version bump leaves old rows in place: they still carry the album
+        // artist, so albums do not split while the files are read again.
+        val tagsStale = settingsManager.tagCacheVersion != CACHE_VERSION
 
         val overrides = database.songOverrideDao().getAllOverrides().associateBy { it.songId }
         val tagCache = database.fileTagDao().getAll().associateBy { it.path }
@@ -211,6 +216,7 @@ class MusicProvider(private val context: Context) {
             val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
             val dateAddedColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
             val trackColumn = cursor.getColumnIndex(MediaStore.Audio.Media.TRACK)
+            val yearColumn = cursor.getColumnIndex(MediaStore.Audio.Media.YEAR)
             val genreColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 cursor.getColumnIndex(MediaStore.Audio.Media.GENRE)
             } else -1
@@ -241,7 +247,9 @@ class MusicProvider(private val context: Context) {
                 val cached = if (exists) {
                     tagCache[data]?.takeIf { it.fileSize == fileSize && it.lastModified == lastModified }
                 } else null
-                if (exists && cached == null) {
+                // Stale rows are re-read only while they still lack the year, so a
+                // finished rescan is not repeated on every launch.
+                if (exists && (cached == null || (tagsStale && cached.year == null))) {
                     pendingTags.add(PendingTag(data, fileSize, lastModified, extension))
                 }
 
@@ -324,6 +332,12 @@ class MusicProvider(private val context: Context) {
                 artist = CharsetUtils.sanitizeText(artist)
                 album = CharsetUtils.sanitizeText(album)
 
+                val mediaStoreYear = if (yearColumn != -1) {
+                    cursor.getInt(yearColumn).takeIf { it in 1000..2200 }
+                } else null
+                // The file tag wins: MediaStore's year column is empty on half the library.
+                val year = cached?.year ?: mediaStoreYear
+
                 val folderName = data.substringBeforeLast("/").substringAfterLast("/")
                 val isHiFiFile = extension in HI_FI_EXTENSIONS
                 val isHiFi = settingsManager.enableHiFi && isHiFiFile
@@ -371,7 +385,8 @@ class MusicProvider(private val context: Context) {
                     Song(
                         id, albumId, title, artist, album, duration, contentUri, data,
                         dateAdded, albumArtUri, genre, folderName, isHiFi, coverUrl, isFavorite, null,
-                        format, bitrate, trackNumber, isHiRes, sampleRate, bitDepth, albumArtist
+                        format, bitrate, trackNumber, isHiRes, sampleRate, bitDepth, albumArtist,
+                        year = year
                     )
                 )
             }
@@ -485,7 +500,8 @@ class MusicProvider(private val context: Context) {
                         tagArtist = tags.artist,
                         tagAlbum = tags.album,
                         tagGenre = tags.genre,
-                        tagTrack = tags.trackNumber
+                        tagTrack = tags.trackNumber,
+                        year = tags.year
                     )
                 }
             }

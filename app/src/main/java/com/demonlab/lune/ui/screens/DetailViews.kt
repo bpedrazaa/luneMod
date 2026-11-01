@@ -974,10 +974,14 @@ fun AlbumDetailView(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                         )
 
-                        if (album.artist.isNotEmpty()) {
+                        val albumSubtitle = listOfNotNull(
+                            album.artist.takeIf { it.isNotBlank() },
+                            album.year?.toString()
+                        ).joinToString("  •  ")
+                        if (albumSubtitle.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = album.artist,
+                                text = albumSubtitle,
                                 style = MaterialTheme.typography.titleMedium,
                                 color = if (hasBlurBackground) Color.White.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,

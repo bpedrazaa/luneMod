@@ -28,7 +28,8 @@ object AudioTagReader {
         val artist: String? = null,
         val album: String? = null,
         val genre: String? = null,
-        val trackNumber: Int? = null
+        val trackNumber: Int? = null,
+        val year: Int? = null
     )
 
     fun read(file: File, extension: String): Tags {
@@ -41,6 +42,7 @@ object AudioTagReader {
         var album: String? = null
         var genre: String? = null
         var trackNumber: Int? = null
+        var year: Int? = null
         var opened = false
 
         val retriever = MediaMetadataRetriever()
@@ -53,6 +55,7 @@ object AudioTagReader {
             artist = extract(retriever, MediaMetadataRetriever.METADATA_KEY_ARTIST)
             album = extract(retriever, MediaMetadataRetriever.METADATA_KEY_ALBUM)
             genre = extract(retriever, MediaMetadataRetriever.METADATA_KEY_GENRE)
+            year = parseYear(extract(retriever, MediaMetadataRetriever.METADATA_KEY_YEAR))
             trackNumber = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER)
                 ?.substringBefore("/")
                 ?.toIntOrNull()
@@ -91,10 +94,11 @@ object AudioTagReader {
                 album = album ?: fallback.album
                 genre = genre ?: fallback.genre
                 trackNumber = trackNumber ?: fallback.trackNumber
+                year = year ?: fallback.year
             }
         }
 
-        return Tags(albumArtist, bitrate, sampleRate, bitDepth, title, artist, album, genre, trackNumber)
+        return Tags(albumArtist, bitrate, sampleRate, bitDepth, title, artist, album, genre, trackNumber, year)
     }
 
     private fun readWithJaudiotagger(file: File): Tags? {
@@ -111,7 +115,8 @@ object AudioTagReader {
                 artist = tagField(tag, FieldKey.ARTIST),
                 album = tagField(tag, FieldKey.ALBUM),
                 genre = tagField(tag, FieldKey.GENRE),
-                trackNumber = tagField(tag, FieldKey.TRACK)?.substringBefore("/")?.toIntOrNull()?.takeIf { it > 0 }
+                trackNumber = tagField(tag, FieldKey.TRACK)?.substringBefore("/")?.toIntOrNull()?.takeIf { it > 0 },
+                year = parseYear(tagField(tag, FieldKey.YEAR))
             )
         } catch (_: Throwable) {
             null
@@ -120,6 +125,16 @@ object AudioTagReader {
 
     private fun extract(retriever: MediaMetadataRetriever, key: Int): String? {
         return runCatching { retriever.extractMetadata(key) }.getOrNull()?.let(::clean)
+    }
+
+    /**
+     * The year tag is usually four digits but can be a full date. Anything
+     * outside a plausible range is ignored rather than shown as a year.
+     */
+    internal fun parseYear(raw: String?): Int? {
+        val match = raw?.let { Regex("(\\d{4})").find(it) } ?: return null
+        val year = match.groupValues[1].toIntOrNull() ?: return null
+        return year.takeIf { it in 1000..2200 }
     }
 
     private fun tagField(tag: org.jaudiotagger.tag.Tag?, key: FieldKey): String? {

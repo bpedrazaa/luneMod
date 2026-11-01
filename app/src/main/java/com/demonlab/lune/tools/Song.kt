@@ -25,7 +25,8 @@ data class Song(
     val isHiRes: Boolean = false,
     val sampleRate: Int? = null,
     val bitDepth: Int? = null,
-    val albumArtist: String = ""
+    val albumArtist: String = "",
+    val year: Int? = null
 ) {
     /** Album artist when tagged, otherwise the track artist. */
     val displayAlbumArtist: String
