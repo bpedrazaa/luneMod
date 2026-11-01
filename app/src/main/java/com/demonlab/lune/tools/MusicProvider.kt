@@ -364,6 +364,7 @@ class MusicProvider(private val context: Context) {
 
         // Direct disk scan fallback for audio files on storage that haven't been indexed by MediaStore yet.
         // Only on explicit refresh: the callers that sync on resume must stay cheap.
+        if (scanForMissing) {
             val indexedPaths = songList.mapTo(HashSet(songList.size)) { it.path.trim() }
             val missingFiles = mutableSetOf<File>()
 
@@ -424,6 +425,7 @@ class MusicProvider(private val context: Context) {
                     } catch (_: Exception) {}
                 }
             }
+        }
 
         songList.sortWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.title })
         saveToCache(songList)
