@@ -2,6 +2,7 @@ package com.demonlab.lune.tools
 
 import android.content.ContentUris
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
@@ -24,12 +25,15 @@ class AudioThumbnailFetcher(
 ) : Fetcher {
 
     override suspend fun fetch(): FetchResult? {
+        // Coil passes the on-screen size; anything larger is wasted work on a row
+        // icon and, for 10k albums, the difference between smooth and janky scroll.
+        val requested = options.size.width.pxOrElse { DEFAULT_SIZE }
+        val targetSize = requested.coerceIn(MIN_SIZE, MAX_SIZE)
+
         // 1. Try modern ContentResolver.loadThumbnail (fast, system-cached, per-song correct)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && uri.scheme == "content") {
             val thumbnail = runCatching {
-                val width = options.size.width.pxOrElse { 1024 }
-                val height = options.size.height.pxOrElse { 1024 }
-                context.contentResolver.loadThumbnail(uri, android.util.Size(width, height), null)
+                context.contentResolver.loadThumbnail(uri, android.util.Size(targetSize, targetSize), null)
             }.getOrNull()
 
             if (thumbnail != null) {
@@ -55,11 +59,11 @@ class AudioThumbnailFetcher(
                 retriever.setDataSource(context, uri)
             }
             retriever.embeddedPicture?.let { picture ->
-                val bitmap = BitmapFactory.decodeByteArray(picture, 0, picture.size)
+                val bitmap = decodeSampled(picture, targetSize)
                 if (bitmap != null) {
                     return DrawableResult(
                         drawable = bitmap.toDrawable(context.resources),
-                        isSampled = false,
+                        isSampled = true,
                         dataSource = DataSource.DISK
                     )
                 }
@@ -87,13 +91,11 @@ class AudioThumbnailFetcher(
                     val audioFile = org.jaudiotagger.audio.AudioFileIO.read(file)
                     val artwork = audioFile.tag?.firstArtwork?.binaryData
                     if (artwork != null && artwork.isNotEmpty()) {
-                        val bitmap = runCatching {
-                            BitmapFactory.decodeByteArray(artwork, 0, artwork.size)
-                        }.getOrNull()
+                        val bitmap = decodeSampled(artwork, targetSize)
                         if (bitmap != null) {
                             return DrawableResult(
                                 drawable = bitmap.toDrawable(context.resources),
-                                isSampled = false,
+                                isSampled = true,
                                 dataSource = DataSource.DISK
                             )
                         }
@@ -106,6 +108,27 @@ class AudioThumbnailFetcher(
 
         // Fallback returns null if no embedded thumbnail or picture exists
         return null
+    }
+
+    private fun decodeSampled(data: ByteArray, targetSize: Int): Bitmap? {
+        return try {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(data, 0, data.size, bounds)
+            var sampleSize = 1
+            while (bounds.outWidth / (sampleSize * 2) >= targetSize) {
+                sampleSize *= 2
+            }
+            val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+            BitmapFactory.decodeByteArray(data, 0, data.size, decodeOptions)
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    companion object {
+        private const val DEFAULT_SIZE = 256
+        private const val MIN_SIZE = 64
+        private const val MAX_SIZE = 1024
     }
 
     class Factory(private val context: Context) : Fetcher.Factory<Uri> {
