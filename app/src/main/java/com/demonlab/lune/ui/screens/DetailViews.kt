@@ -749,52 +749,52 @@ fun AlbumDetailView(
         CategoryCoverManager.getCustomCovers(context, category, album.name)
     }
 
-    val artistAlbums = remember(songs, isArtistView) {
-        if (!isArtistView) {
-            emptyList()
-        } else {
-            songs
-                .groupBy { it.album.trim() }
-                .filter { (albumName, _) ->
-                    albumName.isNotBlank() &&
+    val albumsByKey = remember(songs, isArtistView) {
+        if (!isArtistView) emptyMap()
+        else songs.groupBy { Album.keyFor(it.displayAlbumArtist, it.album) }
+    }
+
+    // A one-track album is still an album and keeps its own chip.
+    val singlesSongIds = remember(albumsByKey, isArtistView) {
+        if (!isArtistView) emptySet()
+        else songs.filter { song ->
+            val albumName = song.album.trim()
+            albumName.isBlank() ||
+                albumName.equals("<unknown>", ignoreCase = true) ||
+                albumName.equals("unknown", ignoreCase = true)
+        }.map { it.id }.toSet()
+    }
+
+    val artistAlbums = remember(albumsByKey) {
+        albumsByKey.values
+            .filter { albumSongs ->
+                val albumName = albumSongs.firstOrNull()?.album?.trim().orEmpty()
+                albumName.isNotBlank() &&
                     !albumName.equals("<unknown>", ignoreCase = true) &&
                     !albumName.equals("unknown", ignoreCase = true)
-                }
-                .map { (albumName, albumSongs) ->
-                    val albumArtist = albumSongs.firstOrNull()?.displayAlbumArtist ?: ""
-                    Album(
-                        id = Album.idFor(albumArtist, albumName),
-                        name = albumName,
-                        artist = albumArtist,
-                        albumArtUri = albumSongs.firstOrNull()?.albumArtUri,
-                        coverUrl = albumSongs.firstOrNull()?.coverUrl,
-                        songs = albumSongs
-                    )
-                }
-                .sortedBy { it.name.lowercase(java.util.Locale.getDefault()) }
-        }
-    }
-
-    val singlesCount = remember(songs, isArtistView) {
-        if (!isArtistView) 0
-        else songs.count {
-            it.album.isBlank() ||
-            it.album.equals("<unknown>", ignoreCase = true) ||
-            it.album.equals("unknown", ignoreCase = true)
-        }
-    }
-
-    val displayedSongs = remember(songs, selectedAlbumName) {
-        if (selectedAlbumName == null) {
-            songs
-        } else if (selectedAlbumName == "__SINGLES__") {
-            songs.filter {
-                it.album.isBlank() ||
-                it.album.equals("<unknown>", ignoreCase = true) ||
-                it.album.equals("unknown", ignoreCase = true)
             }
-        } else {
-            songs.filter { it.album.trim().equals(selectedAlbumName!!.trim(), ignoreCase = true) }
+            .map { albumSongs ->
+                val albumArtist = albumSongs.firstOrNull()?.displayAlbumArtist ?: ""
+                val albumName = albumSongs.firstOrNull()?.album?.trim() ?: ""
+                Album(
+                    id = Album.idFor(albumArtist, albumName),
+                    name = albumName,
+                    artist = albumArtist,
+                    albumArtUri = albumSongs.firstOrNull()?.albumArtUri,
+                    coverUrl = albumSongs.firstOrNull()?.coverUrl,
+                    songs = albumSongs
+                )
+            }
+            .sortedBy { it.name.lowercase(java.util.Locale.getDefault()) }
+    }
+
+    val singlesCount = singlesSongIds.size
+
+    val displayedSongs = remember(songs, selectedAlbumName, singlesSongIds) {
+        when {
+            selectedAlbumName == null -> songs
+            selectedAlbumName == "__SINGLES__" -> songs.filter { it.id in singlesSongIds }
+            else -> songs.filter { Album.keyFor(it.displayAlbumArtist, it.album) == selectedAlbumName }
         }
     }
 
@@ -1220,7 +1220,8 @@ fun AlbumDetailView(
                                     items = artistAlbums,
                                     key = { "album_${it.id}" }
                                 ) { albumItem ->
-                                    val isSelected = selectedAlbumName?.equals(albumItem.name, ignoreCase = true) == true
+                                    val albumItemKey = Album.keyFor(albumItem.artist, albumItem.name)
+                                    val isSelected = selectedAlbumName == albumItemKey
                                     ArtistFilterChip(
                                         label = albumItem.name,
                                         count = albumItem.songs.size,
@@ -1234,7 +1235,7 @@ fun AlbumDetailView(
                                             if (settingsManager.isHapticVibrationEnabled) {
                                                 vibrator.triggerLightVibration()
                                             }
-                                            selectedAlbumName = if (isSelected) null else albumItem.name
+                                            selectedAlbumName = if (isSelected) null else albumItemKey
                                         }
                                     )
                                 }
