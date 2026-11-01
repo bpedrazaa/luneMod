@@ -80,6 +80,16 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+        // Robolectric downloads its android-all jar and takes a lock under user.home.
+        unitTests.all { test ->
+            val testHome = rootProject.layout.projectDirectory.dir("build/test-home").asFile
+            test.doFirst { testHome.mkdirs() }
+            test.systemProperty("user.home", testHome.absolutePath)
+        }
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -131,6 +141,7 @@ dependencies {
     implementation(libs.androidx.room3.runtime)
     ksp(libs.androidx.room3.compiler)
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     debugImplementation(libs.androidx.compose.ui.tooling)
