@@ -1390,20 +1390,20 @@ fun MainScreen(
                         Spacer(modifier = Modifier.weight(1f))
                         if (scanTotal > 0) {
                             LinearProgressIndicator(
-                            progress = { (scanDone.toFloat() / scanTotal.toFloat()).coerceIn(0f, 1f) },
-                            modifier = Modifier
-                                .width(64.dp)
-                                .height(3.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = stringResource(R.string.mod_scan_progress, scanDone, scanTotal),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = stripColor,
-                            maxLines = 1
-                        )
+                                progress = { (scanDone.toFloat() / scanTotal.toFloat()).coerceIn(0f, 1f) },
+                                modifier = Modifier
+                                    .width(64.dp)
+                                    .height(3.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = stringResource(R.string.mod_scan_progress, scanDone, scanTotal),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = stripColor,
+                                maxLines = 1
+                            )
                         }
                     }
                 }
