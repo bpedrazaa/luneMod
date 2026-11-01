@@ -876,7 +876,7 @@ fun MainScreen(
                 Album(
                     id = albumName.hashCode().toLong(),
                     name = albumName,
-                    artist = songs.first().artist,
+                    artist = songs.firstOrNull { it.albumArtist.isNotBlank() }?.albumArtist ?: songs.first().artist,
                     albumArtUri = songs.first().albumArtUri,
                     coverUrl = songs.first().coverUrl,
                     songs = songs.sortedBy { it.title }
