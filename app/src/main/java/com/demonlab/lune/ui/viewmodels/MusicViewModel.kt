@@ -29,6 +29,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.collect
 
 class MusicViewModel(application: Application) : AndroidViewModel(application) {
+    companion object {
+        // A resume within this window reuses the library already in memory.
+        private const val SYNC_THROTTLE_MS = 3 * 60 * 1000L
+    }
+
     private val musicProvider = MusicProvider(application)
     private val metadataManager = MetadataManager(application)
 
@@ -48,6 +53,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     private var syncJob: Job? = null
     private var enrichmentJob: Job? = null
+    private var lastSyncAt = 0L
 
     fun updateRandomResumeArtists(songs: List<Song>, force: Boolean = false) {
         if (force || randomResumeArtistNames.isEmpty()) {
@@ -85,7 +91,12 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
-            requestSync(scanForMissing = forceSync)
+            val stale = System.currentTimeMillis() - lastSyncAt > SYNC_THROTTLE_MS
+            if (forceSync || allSongs.isEmpty() || stale) {
+                requestSync(scanForMissing = forceSync)
+            } else {
+                isLoading = false
+            }
         }
     }
 
@@ -129,6 +140,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             allSongs = sync.songs
         }
         withContext(Dispatchers.Default) { updateRandomResumeArtists(sync.songs) }
+        lastSyncAt = System.currentTimeMillis()
 
         startTagEnrichment(sync.pendingTags)
     }
@@ -170,6 +182,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                     applyTagBatch(batch)
                 }
                 // One more pass so tag-derived titles/artists (WAV, DSD) land too.
+                lastSyncAt = 0L
                 val sync = withContext(Dispatchers.IO) { musicProvider.syncLibrary(false) }
                 applySync(sync)
             } catch (e: CancellationException) {
