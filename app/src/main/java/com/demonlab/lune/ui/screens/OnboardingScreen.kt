@@ -2,6 +2,7 @@ package com.demonlab.lune.ui.screens
 
 import android.Manifest
 import android.content.Intent
+import android.widget.Toast
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Environment
@@ -57,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.demonlab.lune.R
+import com.demonlab.lune.tools.LibraryScope
 import com.demonlab.lune.tools.SettingsManager
 import kotlinx.coroutines.delay
 
@@ -729,16 +731,20 @@ fun ManageFilesPermissionStep(onNext: () -> Unit) {
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
         if (uri != null) {
-            try {
-                context.contentResolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                )
-                settingsManager.musicFolderUri = uri.toString()
-                settingsManager.isLibraryScopePending = true
-                isPermissionGranted = true
-            } catch (e: Exception) {
-                e.printStackTrace()
+            if (LibraryScope.resolvePath(uri.toString()) == null) {
+                Toast.makeText(context, R.string.mod_folder_unmappable, Toast.LENGTH_LONG).show()
+            } else {
+                try {
+                    context.contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    )
+                    settingsManager.musicFolderUri = uri.toString()
+                    settingsManager.isLibraryScopePending = true
+                    isPermissionGranted = true
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
     }

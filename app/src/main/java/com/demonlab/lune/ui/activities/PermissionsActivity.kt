@@ -203,15 +203,19 @@ fun PermissionsScreen(onBack: () -> Unit) {
             androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree()
         ) { uri ->
             if (uri != null) {
-                try {
-                    context.contentResolver.takePersistableUriPermission(
-                        uri,
-                        android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                    )
-                    settingsManager.musicFolderUri = uri.toString()
-                    settingsManager.isLibraryScopePending = true
-                } catch (e: Exception) {
-                    e.printStackTrace()
+                if (com.demonlab.lune.tools.LibraryScope.resolvePath(uri.toString()) == null) {
+                    android.widget.Toast.makeText(context, R.string.mod_folder_unmappable, android.widget.Toast.LENGTH_LONG).show()
+                } else {
+                    try {
+                        context.contentResolver.takePersistableUriPermission(
+                            uri,
+                            android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                        )
+                        settingsManager.musicFolderUri = uri.toString()
+                        settingsManager.isLibraryScopePending = true
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 }
             }
         }

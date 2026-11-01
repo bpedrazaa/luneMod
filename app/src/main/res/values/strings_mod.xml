@@ -17,4 +17,5 @@
     <string name="mod_scan_notification_title">Reading library tags</string>
     <string name="mod_scan_notification_done">Library ready</string>
     <string name="mod_scan_none">Nothing new to scan, the library is up to date</string>
+    <string name="mod_folder_unmappable">That folder cannot be read. Pick a folder on the phone or the SD card.</string>
 </resources>

@@ -37,6 +37,14 @@ object LibraryScope {
         val settings = SettingsManager.getInstance(context)
         if (settings.showAllFoldersOnStart) return null
         val uriString = settings.musicFolderUri ?: return null
+        return resolvePath(uriString)
+    }
+
+    /**
+     * Filesystem root for a tree URI, independent of the settings, so a picker
+     * can refuse a folder that cannot be mapped before it is saved.
+     */
+    fun resolvePath(uriString: String): String? {
         val docId = runCatching { Uri.parse(uriString).lastPathSegment }.getOrNull() ?: return null
         val (volume, relative) = pathFromDocId(Uri.decode(docId)) ?: return null
         val base = when {
