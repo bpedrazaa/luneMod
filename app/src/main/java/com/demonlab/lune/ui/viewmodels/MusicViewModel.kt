@@ -17,6 +17,7 @@ import com.demonlab.lune.data.MusicDatabase
 import com.demonlab.lune.data.PlaylistSong
 import com.demonlab.lune.tools.LibrarySync
 import com.demonlab.lune.tools.MusicProvider
+import com.demonlab.lune.tools.ScanNotifier
 import com.demonlab.lune.tools.PendingTag
 import com.demonlab.lune.tools.Song
 import com.demonlab.lune.tools.SettingsManager
@@ -76,6 +77,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         libraryReadyCount = null
     }
 
+    private var scanNotificationShown = false
     private var syncJob: Job? = null
     private var enrichmentJob: Job? = null
     private var lastSyncAt = 0L
@@ -184,10 +186,14 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         enrichmentJob = viewModelScope.launch {
             tagScanProcessed = 0
             tagScanTotal = pending.size
+            scanNotificationShown = false
+            val app = getApplication<Application>()
             try {
                 musicProvider.enrichTags(pending) { batch ->
                     applyTagBatch(batch)
                     tagScanProcessed = (tagScanProcessed + batch.size).coerceAtMost(tagScanTotal)
+                    scanNotificationShown = true
+                    ScanNotifier.update(app, tagScanProcessed, tagScanTotal)
                 }
                 // Only once every file has been read: until then the older rows
                 // stay in place and keep their album artists.
@@ -197,11 +203,19 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                 val sync = withContext(Dispatchers.IO) { musicProvider.syncLibrary(false) }
                 applySync(sync)
                 libraryReadyCount = allSongs.size
+                if (scanNotificationShown) {
+                    ScanNotifier.finish(app, allSongs.size)
+                    scanNotificationShown = false
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
+                if (scanNotificationShown) {
+                    ScanNotifier.cancel(app)
+                    scanNotificationShown = false
+                }
                 tagScanProcessed = 0
                 tagScanTotal = 0
             }

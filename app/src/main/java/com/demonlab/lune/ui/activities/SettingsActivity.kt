@@ -42,6 +42,7 @@ import android.widget.Toast
 import kotlinx.coroutines.launch
 import com.demonlab.lune.tools.PlaylistBackupManager
 import com.demonlab.lune.tools.MusicProvider
+import com.demonlab.lune.tools.ScanNotifier
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -360,10 +361,14 @@ fun SettingsScreen(
                                     isScanningLibrary = true
                                     scanDone = 0
                                     scanTotal = 0
+                                    var notified = false
                                     val count = musicProvider.refreshLibrary { done, total ->
                                         scanDone = done
                                         scanTotal = total
+                                        notified = true
+                                        ScanNotifier.update(context, done, total)
                                     }
+                                    if (notified) ScanNotifier.finish(context, count)
                                     isScanningLibrary = false
                                     Toast.makeText(
                                         context,
