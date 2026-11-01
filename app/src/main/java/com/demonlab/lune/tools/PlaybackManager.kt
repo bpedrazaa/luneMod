@@ -145,11 +145,12 @@ class PlaybackManager private constructor(private val context: Context) {
             return
         }
         val songPool = if (songs.isNotEmpty()) songs else MusicProvider(context).getCachedSongs()
-        val restoredSongs = if (songPool.isNotEmpty()) {
-            saved.queueIds.mapNotNull { id -> songPool.find { it.id == id } }
-        } else emptyList()
+        // A restored queue can hold thousands of ids; matching each one with a
+        // linear scan of the pool was quadratic and showed up as slow startup.
+        val songsById = songPool.associateBy { it.id }
+        val restoredSongs = saved.queueIds.mapNotNull { songsById[it] }
 
-        val restoredCurrent = (if (songPool.isNotEmpty()) songPool.find { it.id == saved.currentSongId } else null)
+        val restoredCurrent = songsById[saved.currentSongId]
             ?: saved.savedSong
             ?: restoredSongs.firstOrNull()
 
