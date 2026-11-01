@@ -469,6 +469,17 @@ class MusicProvider(private val context: Context) {
         }
 
         songList.sortWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.title })
+
+        // Only a full rescan walked the disk, so only then is a path missing
+        // from the list a path that no longer exists.
+        if (scanForMissing) {
+            val currentPaths = songList.mapTo(HashSet(songList.size)) { it.path }
+            val stalePaths = staleTagCachePaths(tagCache.keys, currentPaths, scopePrefix)
+            if (stalePaths.isNotEmpty()) {
+                stalePaths.chunked(500).forEach { chunk -> database.fileTagDao().deleteAll(chunk) }
+            }
+        }
+
         saveToCache(songList)
         LibrarySync(songList, pendingTags.distinctBy { it.path })
     }

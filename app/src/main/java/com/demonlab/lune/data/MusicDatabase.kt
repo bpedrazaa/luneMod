@@ -51,6 +51,9 @@ interface FileTagDao {
 
     @Query("DELETE FROM file_tag_cache WHERE path = :path")
     suspend fun delete(path: String)
+
+    @Query("DELETE FROM file_tag_cache WHERE path IN (:paths)")
+    suspend fun deleteAll(paths: List<String>)
 }
 
 @Entity(tableName = "playlists")
