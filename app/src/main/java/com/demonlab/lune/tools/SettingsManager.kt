@@ -148,6 +148,10 @@ class SettingsManager(context: Context) {
         get() = prefs.getInt("library_cache_version", 0)
         set(value) = prefs.edit().putInt("library_cache_version", value).apply()
 
+    var libraryCacheHash: Int
+        get() = prefs.getInt("library_cache_hash", 0)
+        set(value) = prefs.edit().putInt("library_cache_hash", value).apply()
+
     var isSortAscending: Boolean
         get() = prefs.getBoolean("is_sort_ascending", true)
         set(value) = prefs.edit().putBoolean("is_sort_ascending", value).apply()

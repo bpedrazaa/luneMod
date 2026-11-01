@@ -92,6 +92,15 @@ class MusicProvider(private val context: Context) {
 
     private fun saveToCache(songs: List<Song>) {
         try {
+            val hash = songs.hashCode()
+            // Most syncs find nothing new; rewriting a multi-megabyte file for
+            // them is pure I/O.
+            if (cacheFile.exists() &&
+                settingsManager.libraryCacheVersion == CACHE_VERSION &&
+                settingsManager.libraryCacheHash == hash
+            ) {
+                return
+            }
             val json = gson.toJson(songs)
             val tmp = File(cacheFile.parentFile, "${cacheFile.name}.tmp")
             tmp.writeText(json)
@@ -100,6 +109,7 @@ class MusicProvider(private val context: Context) {
                 tmp.renameTo(cacheFile)
             }
             settingsManager.libraryCacheVersion = CACHE_VERSION
+            settingsManager.libraryCacheHash = hash
         } catch (e: Exception) {
             e.printStackTrace()
         }
