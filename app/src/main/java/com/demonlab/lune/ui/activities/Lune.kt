@@ -653,6 +653,18 @@ fun MainScreen(
     var miniCoverBounds by remember { mutableStateOf<Rect?>(null) }
     val playerExpansionFraction = remember { Animatable(if (isPlayerExpanded) 1f else 0f) }
 
+    val libraryReadyCount = musicViewModel.libraryReadyCount
+    LaunchedEffect(libraryReadyCount) {
+        if (libraryReadyCount != null) {
+            Toast.makeText(
+                context,
+                context.getString(R.string.mod_scan_ready, libraryReadyCount),
+                Toast.LENGTH_LONG
+            ).show()
+            musicViewModel.consumeLibraryReady()
+        }
+    }
+
     LaunchedEffect(isPlayerExpanded) {
         val target = if (isPlayerExpanded) 1f else 0f
         if (playerExpansionFraction.targetValue != target) {
@@ -1336,6 +1348,35 @@ fun MainScreen(
             }
         ) { innerPadding ->
             Column(modifier = Modifier.padding(top = innerPadding.calculateTopPadding())) {
+
+                val scanTotal = musicViewModel.tagScanTotal
+                val scanDone = musicViewModel.tagScanProcessed
+                val stripColor = if (hasBlurBackgroundMini) Color.White.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSurfaceVariant
+                if (scanTotal > 0) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Spacer(modifier = Modifier.weight(1f))
+                        LinearProgressIndicator(
+                            progress = { (scanDone.toFloat() / scanTotal.toFloat()).coerceIn(0f, 1f) },
+                            modifier = Modifier
+                                .width(64.dp)
+                                .height(3.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.mod_scan_progress, scanDone, scanTotal),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = stripColor,
+                            maxLines = 1
+                        )
+                    }
+                }
 
                 HorizontalPager(
                     state = pagerState,

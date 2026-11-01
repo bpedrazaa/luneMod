@@ -62,6 +62,20 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     var isLoading by mutableStateOf(false)
         private set
 
+    /** Files read out of the tag pass total; the chip only shows while total is set. */
+    var tagScanProcessed by mutableStateOf(0)
+        private set
+    var tagScanTotal by mutableStateOf(0)
+        private set
+
+    /** Set when a full tag pass completes, so the screen can say the library is ready. */
+    var libraryReadyCount by mutableStateOf<Int?>(null)
+        private set
+
+    fun consumeLibraryReady() {
+        libraryReadyCount = null
+    }
+
     private var syncJob: Job? = null
     private var enrichmentJob: Job? = null
     private var lastSyncAt = 0L
@@ -165,9 +179,12 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         if (pending.isEmpty()) return
         enrichmentJob?.cancel()
         enrichmentJob = viewModelScope.launch {
+            tagScanProcessed = 0
+            tagScanTotal = pending.size
             try {
                 musicProvider.enrichTags(pending) { batch ->
                     applyTagBatch(batch)
+                    tagScanProcessed = (tagScanProcessed + batch.size).coerceAtMost(tagScanTotal)
                 }
                 // Only once every file has been read: until then the older rows
                 // stay in place and keep their album artists.
@@ -176,10 +193,14 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                 lastSyncAt = 0L
                 val sync = withContext(Dispatchers.IO) { musicProvider.syncLibrary(false) }
                 applySync(sync)
+                libraryReadyCount = allSongs.size
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 e.printStackTrace()
+            } finally {
+                tagScanProcessed = 0
+                tagScanTotal = 0
             }
         }
     }

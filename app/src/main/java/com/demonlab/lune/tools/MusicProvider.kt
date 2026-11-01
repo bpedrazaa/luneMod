@@ -473,10 +473,25 @@ class MusicProvider(private val context: Context) {
         LibrarySync(songList, pendingTags.distinctBy { it.path })
     }
 
-    suspend fun refreshLibrary(): List<Song> = withContext(Dispatchers.IO) {
-        if (!hasReadPermission()) return@withContext emptyList()
-        syncLibrary(scanForMissing = true).songs
-    }
+    /**
+     * Full rescan: the MediaStore pass, the missing file walk and the tag pass,
+     * reporting tag progress so a caller can show it.
+     */
+    suspend fun refreshLibrary(onProgress: suspend (done: Int, total: Int) -> Unit = { _, _ -> }): Int =
+        withContext(Dispatchers.IO) {
+            if (!hasReadPermission()) return@withContext 0
+            val sync = syncLibrary(scanForMissing = true)
+            if (sync.pendingTags.isNotEmpty()) {
+                val total = sync.pendingTags.size
+                var done = 0
+                enrichTags(sync.pendingTags) { batch ->
+                    done += batch.size
+                    onProgress(done, total)
+                }
+                settingsManager.tagCacheVersion = CACHE_VERSION
+            }
+            sync.songs.size
+        }
 
     /**
      * Reads tags for files with no usable cache entry and reports each batch so

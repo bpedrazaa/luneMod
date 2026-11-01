@@ -119,6 +119,8 @@ fun SettingsScreen(
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showBackupWarning by remember { mutableStateOf(settingsManager.showBackupWarning) }
     var isScanningLibrary by remember { mutableStateOf(false) }
+    var scanDone by remember { mutableIntStateOf(0) }
+    var scanTotal by remember { mutableIntStateOf(0) }
     val currentLanguage = settingsManager.language
     val scope = rememberCoroutineScope()
     val backupManager = remember { PlaylistBackupManager(context) }
@@ -336,7 +338,11 @@ fun SettingsScreen(
 
                     SettingsPreferenceItem(
                         headlineText = stringResource(R.string.rescan_library),
-                        supportingText = stringResource(R.string.rescan_library_desc),
+                        supportingText = if (isScanningLibrary && scanTotal > 0) {
+                            stringResource(R.string.mod_scan_progress, scanDone, scanTotal)
+                        } else {
+                            stringResource(R.string.rescan_library_desc)
+                        },
                         icon = Icons.Default.Sync,
                         position = SectionPosition.MIDDLE,
                         trailingContent = if (isScanningLibrary) {
@@ -352,11 +358,16 @@ fun SettingsScreen(
                             if (!isScanningLibrary) {
                                 scope.launch {
                                     isScanningLibrary = true
-                                    val songs = musicProvider.refreshLibrary()
+                                    scanDone = 0
+                                    scanTotal = 0
+                                    val count = musicProvider.refreshLibrary { done, total ->
+                                        scanDone = done
+                                        scanTotal = total
+                                    }
                                     isScanningLibrary = false
                                     Toast.makeText(
                                         context,
-                                        context.getString(R.string.rescan_library_success, songs.size),
+                                        context.getString(R.string.rescan_library_success, count),
                                         Toast.LENGTH_LONG
                                     ).show()
                                 }
