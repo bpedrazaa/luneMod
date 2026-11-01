@@ -798,8 +798,11 @@ fun AlbumDetailView(
         }
     }
 
-    val sortedSongs = remember(displayedSongs, sortOption, isSortAscending) {
-        playbackManager.getSortedList(displayedSongs, sortOption, isSortAscending)
+    // An album is a sequence. Keep the user's chosen sort, but the default
+    // alphabetical one sorts by album and then track instead of by title.
+    val effectiveSortOption = if (sortOption == "ALPHABETICAL") "ALBUM" else sortOption
+    val sortedSongs = remember(displayedSongs, effectiveSortOption, isSortAscending) {
+        playbackManager.getSortedList(displayedSongs, effectiveSortOption, isSortAscending)
     }
     
     val headerAlpha by remember {
