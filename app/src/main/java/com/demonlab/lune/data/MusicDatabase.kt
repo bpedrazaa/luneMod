@@ -13,6 +13,45 @@ data class SongOverride(
     val isFavorite: Boolean = false
 )
 
+/**
+ * Tags that MediaStore does not expose, keyed by path and invalidated by
+ * size + last-modified. Avoids reopening every audio file on each sync.
+ */
+@Entity(tableName = "file_tag_cache")
+data class FileTagCache(
+    @PrimaryKey val path: String,
+    val fileSize: Long,
+    val lastModified: Long,
+    val albumArtist: String? = null,
+    val bitrate: Int? = null,
+    val sampleRate: Int? = null,
+    val bitDepth: Int? = null,
+    val tagTitle: String? = null,
+    val tagArtist: String? = null,
+    val tagAlbum: String? = null,
+    val tagGenre: String? = null,
+    val tagTrack: Int? = null,
+    val updatedAt: Long = System.currentTimeMillis()
+)
+
+@Dao
+interface FileTagDao {
+    @Query("SELECT * FROM file_tag_cache")
+    suspend fun getAll(): List<FileTagCache>
+
+    @Query("SELECT * FROM file_tag_cache WHERE path = :path")
+    suspend fun get(path: String): FileTagCache?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(entry: FileTagCache)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(entries: List<FileTagCache>)
+
+    @Query("DELETE FROM file_tag_cache WHERE path = :path")
+    suspend fun delete(path: String)
+}
+
 @Entity(tableName = "playlists")
 data class Playlist(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -133,12 +172,13 @@ interface PlaybackStatsDao {
 }
 
 @Database(
-    entities = [SongOverride::class, Playlist::class, PlaylistSong::class, PlaybackStats::class],
-    version = 8,
+    entities = [SongOverride::class, Playlist::class, PlaylistSong::class, PlaybackStats::class, FileTagCache::class],
+    version = 9,
     autoMigrations = [
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 6, to = 7),
-        AutoMigration(from = 7, to = 8)
+        AutoMigration(from = 7, to = 8),
+        AutoMigration(from = 8, to = 9)
     ],
     exportSchema = true
 )
@@ -146,6 +186,7 @@ abstract class MusicDatabase : RoomDatabase() {
     abstract fun songOverrideDao(): SongOverrideDao
     abstract fun playlistDao(): PlaylistDao
     abstract fun playbackStatsDao(): PlaybackStatsDao
+    abstract fun fileTagDao(): FileTagDao
 
     companion object {
         @Volatile
