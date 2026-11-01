@@ -1368,8 +1368,8 @@ fun MainScreen(
                         }
                     }
 
-                    val pageSortedSongs = remember(pageFilteredSongs, activeSortOption, activeIsSortAscending) {
-                        playbackManager.getSortedList(pageFilteredSongs, activeSortOption, activeIsSortAscending)
+                    val pageSortedSongs = remember(pageFilteredSongs, activeSortOption, activeIsSortAscending, activeIsCaseSensitive) {
+                        playbackManager.getSortedList(pageFilteredSongs, activeSortOption, activeIsSortAscending, activeIsCaseSensitive)
                     }
 
                     val pageContextId = remember(folder) {
