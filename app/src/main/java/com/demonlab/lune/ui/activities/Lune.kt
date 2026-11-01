@@ -602,6 +602,14 @@ class Lune : AppCompatActivity() {
     }
 }
 
+/** The selected folder as a readable label: "primary:Music/MyMusic" becomes "Music/MyMusic". */
+private fun scopedFolderLabel(treeUri: String?): String? {
+    val raw = treeUri?.takeIf { it.isNotBlank() } ?: return null
+    val segment = runCatching { android.net.Uri.parse(raw).lastPathSegment }.getOrNull() ?: return null
+    val decoded = runCatching { android.net.Uri.decode(segment) }.getOrNull() ?: return null
+    return decoded.substringAfter(':', decoded).trim().ifBlank { null }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
@@ -1349,18 +1357,39 @@ fun MainScreen(
         ) { innerPadding ->
             Column(modifier = Modifier.padding(top = innerPadding.calculateTopPadding())) {
 
+                val folderLabel = remember(settingsManager.musicFolderUri) {
+                    scopedFolderLabel(settingsManager.musicFolderUri)
+                }
                 val scanTotal = musicViewModel.tagScanTotal
                 val scanDone = musicViewModel.tagScanProcessed
                 val stripColor = if (hasBlurBackgroundMini) Color.White.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSurfaceVariant
-                if (scanTotal > 0) {
+                if (folderLabel != null || scanTotal > 0) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 18.dp, vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        if (folderLabel != null) {
+                            Icon(
+                                imageVector = Icons.Default.Folder,
+                                contentDescription = null,
+                                tint = stripColor,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = folderLabel,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = stripColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                        }
                         Spacer(modifier = Modifier.weight(1f))
-                        LinearProgressIndicator(
+                        if (scanTotal > 0) {
+                            LinearProgressIndicator(
                             progress = { (scanDone.toFloat() / scanTotal.toFloat()).coerceIn(0f, 1f) },
                             modifier = Modifier
                                 .width(64.dp)
@@ -1375,6 +1404,7 @@ fun MainScreen(
                             color = stripColor,
                             maxLines = 1
                         )
+                        }
                     }
                 }
 
