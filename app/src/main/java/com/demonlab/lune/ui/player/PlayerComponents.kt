@@ -447,6 +447,7 @@ fun UnifiedMarqueeHeader(
     runtimeBitDepth: Int?,
     runtimeBitrate: Int?,
     onArtistClick: ((String) -> Unit)?,
+    onAlbumClick: ((String) -> Unit)?,
     onAudioBadgesClick: () -> Unit,
     modifier: Modifier = Modifier,
     isCompact: Boolean = false,
@@ -539,6 +540,41 @@ fun UnifiedMarqueeHeader(
                             vertical = if (isCompact) 2.dp else 4.dp
                         )
                     )
+                }
+
+                if (song.album.isNotBlank()) {
+                    Surface(
+                        color = if (useBlurControls) blurContainerColor else if (isAmoled) Color(0xFF222222) else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f),
+                        shape = RoundedCornerShape(percent = 50),
+                        modifier = Modifier
+                            .bounceClick(0.95f)
+                            .clickable { onAlbumClick?.invoke(song.album) }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.padding(
+                                horizontal = if (isCompact) 8.dp else 10.dp,
+                                vertical = if (isCompact) 2.dp else 4.dp
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Album,
+                                contentDescription = null,
+                                tint = if (useBlurControls) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f),
+                                modifier = Modifier.size(if (isCompact) 12.dp else 14.dp)
+                            )
+                            Text(
+                                text = song.album,
+                                style = if (isCompact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
+                                color = if (useBlurControls) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                softWrap = false,
+                                textAlign = TextAlign.Start
+                            )
+                        }
+                    }
                 }
 
                 if (settingsManager.isBitrateOnPlayer) {
@@ -744,6 +780,7 @@ fun FullPlayer(
     onShowLyrics: () -> Unit,
     onRequestAudioPermission: () -> Unit,
     onArtistClick: ((String) -> Unit)? = null,
+    onAlbumClick: ((String) -> Unit)? = null,
     expansionFraction: Float = 1f,
     miniCoverBounds: Rect? = null
 ) {
@@ -1764,6 +1801,7 @@ fun FullPlayer(
                         runtimeBitDepth = runtimeBitDepth,
                         runtimeBitrate = runtimeBitrate,
                         onArtistClick = onArtistClick,
+                        onAlbumClick = onAlbumClick,
                         onAudioBadgesClick = { showAudioDetailsSheet = true },
                         isCompact = isFloatingWindow,
                         modifier = Modifier

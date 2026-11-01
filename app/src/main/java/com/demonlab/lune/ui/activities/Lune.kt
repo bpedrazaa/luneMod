@@ -2844,6 +2844,23 @@ fun MainScreen(
                     onIsPlayerExpandedChange(false)
                     onSelectedFolderChange("ARTISTS")
                 },
+                onAlbumClick = { albumName ->
+                    val albumSongs = visibleSongs.filter { it.album.trim().equals(albumName.trim(), ignoreCase = true) }
+                    if (albumSongs.isNotEmpty()) {
+                        val albumToOpen = Album(
+                            id = albumName.hashCode().toLong(),
+                            name = albumSongs.first().album,
+                            artist = albumSongs.firstOrNull { it.albumArtist.isNotBlank() }?.albumArtist ?: albumSongs.first().artist,
+                            albumArtUri = albumSongs.first().albumArtUri,
+                            coverUrl = albumSongs.first().coverUrl,
+                            songs = albumSongs.sortedWith(compareBy({ it.trackNumber }, { it.title }))
+                        )
+                        selectedAlbum = albumToOpen
+                        isAlbumView = true
+                        onIsPlayerExpandedChange(false)
+                        onSelectedFolderChange("ALBUMS")
+                    }
+                },
                 expansionFraction = expansionProgress,
                 miniCoverBounds = miniCoverBounds
             )
