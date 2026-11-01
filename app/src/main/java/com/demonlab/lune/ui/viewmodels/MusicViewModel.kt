@@ -161,6 +161,9 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             if (allSongs.isEmpty()) {
                 allSongs = emptyList()
             }
+            // An empty selected folder is an answer, not a scan still pending, or
+            // every resume would rescan it again.
+            settingsManager.isLibraryScopePending = false
             return
         }
 
