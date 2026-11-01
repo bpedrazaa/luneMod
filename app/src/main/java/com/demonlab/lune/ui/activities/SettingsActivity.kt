@@ -362,17 +362,21 @@ fun SettingsScreen(
                                     scanDone = 0
                                     scanTotal = 0
                                     var notified = false
-                                    val count = musicProvider.refreshLibrary { done, total ->
+                                    val result = musicProvider.refreshLibrary { done, total ->
                                         scanDone = done
                                         scanTotal = total
                                         notified = true
                                         ScanNotifier.update(context, done, total)
                                     }
-                                    if (notified) ScanNotifier.finish(context, count)
+                                    if (notified) ScanNotifier.finish(context, result.songCount)
                                     isScanningLibrary = false
                                     Toast.makeText(
                                         context,
-                                        context.getString(R.string.rescan_library_success, count),
+                                        if (result.tagsRead == 0) {
+                                            context.getString(R.string.mod_scan_none)
+                                        } else {
+                                            context.getString(R.string.rescan_library_success, result.songCount)
+                                        },
                                         Toast.LENGTH_LONG
                                     ).show()
                                 }

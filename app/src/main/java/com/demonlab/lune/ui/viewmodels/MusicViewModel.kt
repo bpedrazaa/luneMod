@@ -73,9 +73,19 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     var libraryReadyCount by mutableStateOf<Int?>(null)
         private set
 
+    /** Set when a manual rescan found nothing to read. */
+    var libraryUpToDate by mutableStateOf(false)
+        private set
+
     fun consumeLibraryReady() {
         libraryReadyCount = null
     }
+
+    fun consumeLibraryUpToDate() {
+        libraryUpToDate = false
+    }
+
+    private var manualRescan = false
 
     private var scanNotificationShown = false
     private var syncJob: Job? = null
@@ -134,6 +144,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun refreshLibrary() {
+        manualRescan = true
         requestSync(scanForMissing = true)
     }
 
@@ -157,6 +168,10 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun applySync(sync: LibrarySync) {
+        if (manualRescan) {
+            manualRescan = false
+            if (sync.pendingTags.isEmpty()) libraryUpToDate = true
+        }
         if (sync.songs.isEmpty()) {
             // If sync returned empty but we already had songs, don't clear the list.
             // This prevents the "no songs" bug when permissions or MediaStore fail temporarily.

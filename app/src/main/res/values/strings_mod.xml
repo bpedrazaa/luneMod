@@ -16,4 +16,5 @@
     <string name="mod_scan_channel_desc">Shows the tag scan progress while the library is being read</string>
     <string name="mod_scan_notification_title">Reading library tags</string>
     <string name="mod_scan_notification_done">Library ready</string>
+    <string name="mod_scan_none">Nothing new to scan, the library is up to date</string>
 </resources>

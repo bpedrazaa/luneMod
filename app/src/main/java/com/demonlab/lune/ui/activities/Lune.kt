@@ -673,6 +673,14 @@ fun MainScreen(
         }
     }
 
+    val libraryUpToDate = musicViewModel.libraryUpToDate
+    LaunchedEffect(libraryUpToDate) {
+        if (libraryUpToDate) {
+            Toast.makeText(context, context.getString(R.string.mod_scan_none), Toast.LENGTH_LONG).show()
+            musicViewModel.consumeLibraryUpToDate()
+        }
+    }
+
     LaunchedEffect(isPlayerExpanded) {
         val target = if (isPlayerExpanded) 1f else 0f
         if (playerExpansionFraction.targetValue != target) {
