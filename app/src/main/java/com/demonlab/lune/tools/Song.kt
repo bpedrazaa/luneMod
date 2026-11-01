@@ -24,8 +24,13 @@ data class Song(
     val trackNumber: Int = 0,
     val isHiRes: Boolean = false,
     val sampleRate: Int? = null,
-    val bitDepth: Int? = null
-)
+    val bitDepth: Int? = null,
+    val albumArtist: String = ""
+) {
+    /** Album artist when tagged, otherwise the track artist. */
+    val displayAlbumArtist: String
+        get() = albumArtist.ifBlank { artist }
+}
 
 data class SongArtwork(
     val id: Long,

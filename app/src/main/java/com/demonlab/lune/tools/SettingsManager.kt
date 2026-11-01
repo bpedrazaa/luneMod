@@ -144,6 +144,10 @@ class SettingsManager(context: Context) {
         get() = prefs.getString("default_section_tab", "") ?: ""
         set(value) = prefs.edit().putString("default_section_tab", value).apply()
 
+    var libraryCacheVersion: Int
+        get() = prefs.getInt("library_cache_version", 0)
+        set(value) = prefs.edit().putInt("library_cache_version", value).apply()
+
     var isSortAscending: Boolean
         get() = prefs.getBoolean("is_sort_ascending", true)
         set(value) = prefs.edit().putBoolean("is_sort_ascending", value).apply()

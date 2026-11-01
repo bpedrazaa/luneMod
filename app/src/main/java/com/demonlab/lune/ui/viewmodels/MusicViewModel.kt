@@ -11,12 +11,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.demonlab.lune.data.FileTagCache
 import com.demonlab.lune.data.MusicDatabase
 import com.demonlab.lune.data.PlaylistSong
+import com.demonlab.lune.tools.LibrarySync
 import com.demonlab.lune.tools.MusicProvider
+import com.demonlab.lune.tools.PendingTag
 import com.demonlab.lune.tools.Song
 import com.demonlab.lune.tools.SettingsManager
 import com.demonlab.lune.tools.MetadataManager
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -31,16 +35,19 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     var allSongs by mutableStateOf<List<Song>>(emptyList())
         private set
 
-    var randomResumeArtistNames by mutableStateOf<List<String>>(emptyList())
-        private set
-
     val visuallyDeletedIds = androidx.compose.runtime.mutableStateListOf<Long>()
 
     val filteredSongs: List<Song>
         get() = allSongs.filter { it.id !in visuallyDeletedIds }
 
+    var randomResumeArtistNames by mutableStateOf<List<String>>(emptyList())
+        private set
+
     var isLoading by mutableStateOf(false)
         private set
+
+    private var syncJob: Job? = null
+    private var enrichmentJob: Job? = null
 
     fun updateRandomResumeArtists(songs: List<Song>, force: Boolean = false) {
         if (force || randomResumeArtistNames.isEmpty()) {
@@ -64,77 +71,152 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun loadSongs() {
+    fun loadSongs(forceSync: Boolean = false) {
         viewModelScope.launch {
-            val cached = withContext(Dispatchers.IO) {
-                musicProvider.getCachedSongs()
+            if (allSongs.isEmpty()) {
+                val cached = withContext(Dispatchers.IO) {
+                    musicProvider.getCachedSongs()
+                }
+                if (cached.isNotEmpty()) {
+                    allSongs = cached
+                    withContext(Dispatchers.Default) { updateRandomResumeArtists(cached) }
+                } else {
+                    isLoading = true
+                }
             }
-            if (cached.isNotEmpty() && allSongs.isEmpty()) {
-                allSongs = cached
-                updateRandomResumeArtists(cached)
-            } else if (allSongs.isEmpty()) {
-                isLoading = true
-            }
-            
-            syncSongsInternal()
-            isLoading = false
+
+            requestSync(scanForMissing = forceSync)
         }
     }
 
     fun refreshLibrary() {
-        viewModelScope.launch {
-            isLoading = true
-            val refreshed = musicProvider.refreshLibrary()
-            if (refreshed.isNotEmpty()) {
-                allSongs = refreshed
-                updateRandomResumeArtists(refreshed, force = false)
+        requestSync(scanForMissing = true)
+    }
+
+    private fun requestSync(scanForMissing: Boolean) {
+        if (syncJob?.isActive == true) return
+        syncJob = viewModelScope.launch {
+            isLoading = allSongs.isEmpty() || scanForMissing
+            try {
+                val sync = withContext(Dispatchers.IO) {
+                    musicProvider.syncLibrary(scanForMissing)
+                }
+                applySync(sync)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                isLoading = false
             }
-            isLoading = false
         }
     }
 
-    private suspend fun syncSongsInternal() {
-        val synced = musicProvider.syncSongs()
-        
-        if (synced.isNotEmpty()) {
-            val settingsManager = SettingsManager.getInstance(getApplication())
-            if (settingsManager.isInitialFolderScanPending) {
-                if (!settingsManager.showAllFoldersOnStart) {
-                    val uriStr = settingsManager.musicFolderUri
-                    if (!uriStr.isNullOrBlank()) {
-                        try {
-                            val uri = android.net.Uri.parse(uriStr)
-                            val pathSegment = uri.lastPathSegment?.substringAfterLast(":")
-                            if (!pathSegment.isNullOrBlank()) {
-                                val targetFolder = pathSegment.substringAfterLast("/")
-                                val allowedFolderNames = synced.filter { song ->
-                                    song.path.contains("/$pathSegment/", ignoreCase = true) ||
-                                    song.path.contains("/$targetFolder/", ignoreCase = true)
-                                }.map { it.folderName }.toSet()
-
-                                val allFolderNames = synced.map { it.folderName }.toSet()
-                                val foldersToHide = allFolderNames - allowedFolderNames
-                                settingsManager.hiddenFolders = foldersToHide
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-                }
-                settingsManager.isInitialFolderScanPending = false
-            }
-            
-            if (synced != allSongs) {
-                allSongs = synced
-            }
-            updateRandomResumeArtists(synced)
-        } else {
+    private suspend fun applySync(sync: LibrarySync) {
+        if (sync.songs.isEmpty()) {
             // If sync returned empty but we already had songs, don't clear the list.
             // This prevents the "no songs" bug when permissions or MediaStore fail temporarily.
             if (allSongs.isEmpty()) {
                 allSongs = emptyList()
             }
+            return
         }
+
+        applyInitialFolderScan(sync.songs)
+
+        val changed = withContext(Dispatchers.Default) { sync.songs != allSongs }
+        if (changed) {
+            allSongs = sync.songs
+        }
+        withContext(Dispatchers.Default) { updateRandomResumeArtists(sync.songs) }
+
+        startTagEnrichment(sync.pendingTags)
+    }
+
+    private fun applyInitialFolderScan(songs: List<Song>) {
+        val settingsManager = SettingsManager.getInstance(getApplication())
+        if (!settingsManager.isInitialFolderScanPending) return
+        if (!settingsManager.showAllFoldersOnStart) {
+            val uriStr = settingsManager.musicFolderUri
+            if (!uriStr.isNullOrBlank()) {
+                try {
+                    val uri = Uri.parse(uriStr)
+                    val pathSegment = uri.lastPathSegment?.substringAfterLast(":")
+                    if (!pathSegment.isNullOrBlank()) {
+                        val targetFolder = pathSegment.substringAfterLast("/")
+                        val allowedFolderNames = songs.filter { song ->
+                            song.path.contains("/$pathSegment/", ignoreCase = true) ||
+                                song.path.contains("/$targetFolder/", ignoreCase = true)
+                        }.map { it.folderName }.toSet()
+
+                        val allFolderNames = songs.map { it.folderName }.toSet()
+                        val foldersToHide = allFolderNames - allowedFolderNames
+                        settingsManager.hiddenFolders = foldersToHide
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+        settingsManager.isInitialFolderScanPending = false
+    }
+
+    private fun startTagEnrichment(pending: List<PendingTag>) {
+        if (pending.isEmpty()) return
+        enrichmentJob?.cancel()
+        enrichmentJob = viewModelScope.launch {
+            try {
+                musicProvider.enrichTags(pending) { batch ->
+                    applyTagBatch(batch)
+                }
+                // One more pass so tag-derived titles/artists (WAV, DSD) land too.
+                val sync = withContext(Dispatchers.IO) { musicProvider.syncLibrary(false) }
+                applySync(sync)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun applyTagBatch(batch: List<FileTagCache>) {
+        if (batch.isEmpty()) return
+        val byPath = batch.associateBy { it.path }
+        var changed = false
+        val updated = allSongs.map { song ->
+            val tag = byPath[song.path] ?: return@map song
+            val albumArtist = if (song.albumArtist.isBlank()) tag.albumArtist ?: "" else song.albumArtist
+            val sampleRate = tag.sampleRate ?: song.sampleRate
+            val bitDepth = tag.bitDepth ?: song.bitDepth
+            val bitrate = tag.bitrate ?: song.bitrate
+            val isHiRes = song.isHiRes || looksHiRes(sampleRate, bitDepth, song.format)
+
+            if (albumArtist == song.albumArtist && sampleRate == song.sampleRate &&
+                bitDepth == song.bitDepth && bitrate == song.bitrate && isHiRes == song.isHiRes
+            ) {
+                song
+            } else {
+                changed = true
+                song.copy(
+                    albumArtist = albumArtist,
+                    sampleRate = sampleRate,
+                    bitDepth = bitDepth,
+                    bitrate = bitrate,
+                    isHiRes = isHiRes
+                )
+            }
+        }
+        if (changed) {
+            allSongs = updated
+        }
+    }
+
+    private fun looksHiRes(sampleRate: Int?, bitDepth: Int?, format: String): Boolean {
+        if (format == "DSD") return true
+        val sr = sampleRate ?: 0
+        val bd = bitDepth ?: 0
+        return (sr >= 48000 && bd >= 24) || sr >= 88200
     }
 
     fun toggleFavorite(song: Song) {
@@ -421,7 +503,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val db = com.demonlab.lune.data.MusicDatabase.getDatabase(getApplication())
             val dao = db.playbackStatsDao()
-            
+
             launch {
                 dao.getTopByCountFlow("SONG", 50).collect { topSongStats = it }
             }
@@ -470,11 +552,11 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                     // 2. Delete from MediaStore
                     val rows = context.contentResolver.delete(songUri, null, null)
                     if (rows > 0) success = true
-                    
+
                     // 3. Fallback: direct file delete
                     val file = java.io.File(songData)
                     if (file.exists() && file.delete()) success = true
-                    
+
                     // 4. Delete metadata overrides (only if deletion succeeded)
                     if (success) {
                         val db = com.demonlab.lune.data.MusicDatabase.getDatabase(context)
@@ -482,17 +564,18 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                         if (override != null) {
                             db.songOverrideDao().deleteOverride(override)
                         }
+                        db.fileTagDao().delete(songData)
                     }
-                    
+
                     success
                 } catch (e: Exception) {
                     e.printStackTrace()
                     false
                 }
             }
-            
+
             if (deleted) {
-                loadSongs()
+                loadSongs(forceSync = true)
             }
             visuallyDeletedIds.remove(songId)
         }
@@ -512,7 +595,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                 debounceJob?.cancel()
                 debounceJob = viewModelScope.launch {
                     delay(2000)
-                    syncSongsInternal()
+                    requestSync(scanForMissing = false)
                 }
             }
         }
@@ -533,10 +616,9 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
+        enrichmentJob?.cancel()
         mediaStoreObserver?.let {
             getApplication<Application>().contentResolver.unregisterContentObserver(it)
         }
     }
 }
-
-
