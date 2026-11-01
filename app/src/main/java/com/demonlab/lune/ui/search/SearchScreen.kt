@@ -970,11 +970,15 @@ internal fun computeSearchResults(
     val albumResults = matchAlbums(allAlbums)
     val realAlbumResults = matchAlbums(allRealAlbums)
 
+    // One id lookup per mapping instead of a linear scan of the whole library.
+    val songsById = allSongs.associateBy { it.id }
     val playlistResults = mutableMapOf<Playlist, List<Song>>()
     for (playlist in allPlaylists) {
         val nameMatches = searchTerms.all { term -> playlist.name.normalizeForSearch().contains(term) }
-        val playlistSongs = playlistMappings.filter { it.playlistId == playlist.id }
-            .mapNotNull { mapping -> allSongs.find { it.id == mapping.songId } }
+        val playlistSongs = playlistMappings.asSequence()
+            .filter { it.playlistId == playlist.id }
+            .mapNotNull { songsById[it.songId] }
+            .toList()
         val matchingSongs = playlistSongs.filter { it.id in matchedSongIds }
         if (nameMatches || matchingSongs.isNotEmpty()) {
             playlistResults[playlist] = matchingSongs
