@@ -446,7 +446,7 @@ fun UnifiedMarqueeHeader(
     runtimeSampleRate: Int?,
     runtimeBitDepth: Int?,
     runtimeBitrate: Int?,
-    onArtistClick: ((String) -> Unit)?,
+    onAlbumArtistClick: ((String) -> Unit)?,
     onAlbumClick: ((String, String) -> Unit)?,
     onAudioBadgesClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -525,10 +525,12 @@ fun UnifiedMarqueeHeader(
                     shape = RoundedCornerShape(percent = 50),
                     modifier = Modifier
                         .bounceClick(0.95f)
-                        .clickable { onArtistClick?.invoke(song.artist) }
+                        .clickable(
+                            onClickLabel = stringResource(R.string.mod_open_album_artist)
+                        ) { onAlbumArtistClick?.invoke(song.displayAlbumArtist) }
                 ) {
                     Text(
-                        text = song.artist,
+                        text = song.displayAlbumArtist,
                         style = if (isCompact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
                         color = if (useBlurControls) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
                         fontWeight = FontWeight.Bold,
@@ -749,6 +751,18 @@ fun UnifiedMarqueeHeader(
                     }
                 }
             }
+
+            // Line 3: collaborators, only when the album artist differs.
+            if (song.artist.isNotBlank() && !song.artist.trim().equals(song.displayAlbumArtist.trim(), ignoreCase = true)) {
+                Text(
+                    text = song.artist,
+                    style = if (isCompact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
+                    color = if (useBlurControls) Color.White.copy(alpha = 0.62f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 2.dp, top = 1.dp)
+                )
+            }
         }
     }
 }
@@ -779,7 +793,7 @@ fun FullPlayer(
     controlsColorPalette: Int,
     onShowLyrics: () -> Unit,
     onRequestAudioPermission: () -> Unit,
-    onArtistClick: ((String) -> Unit)? = null,
+    onAlbumArtistClick: ((String) -> Unit)? = null,
     onAlbumClick: ((String, String) -> Unit)? = null,
     expansionFraction: Float = 1f,
     miniCoverBounds: Rect? = null
@@ -1810,7 +1824,7 @@ fun FullPlayer(
                         runtimeSampleRate = runtimeSampleRate,
                         runtimeBitDepth = runtimeBitDepth,
                         runtimeBitrate = runtimeBitrate,
-                        onArtistClick = onArtistClick,
+                        onAlbumArtistClick = onAlbumArtistClick,
                         onAlbumClick = onAlbumClick,
                         onAudioBadgesClick = { showAudioDetailsSheet = true },
                         isCompact = isFloatingWindow,

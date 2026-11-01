@@ -2793,20 +2793,24 @@ fun MainScreen(
                     context.startActivity(intent)
                 },
                 onRequestAudioPermission = onRequestAudioPermission,
-                onArtistClick = { artistName ->
-                    val artistSongs = visibleSongs.filter { it.artist.trim().equals(artistName.trim(), ignoreCase = true) }
-                    val artistAlbum = Album(
-                        id = artistName.hashCode().toLong(),
-                        name = artistName,
-                        artist = "",
-                        albumArtUri = artistSongs.firstOrNull()?.albumArtUri,
-                        coverUrl = artistSongs.firstOrNull()?.coverUrl,
-                        songs = artistSongs.sortedBy { it.title }
-                    )
-                    selectedAlbum = artistAlbum
-                    isAlbumView = false
-                    onIsPlayerExpandedChange(false)
-                    onSelectedFolderChange("ARTISTS")
+                onAlbumArtistClick = { albumArtistName ->
+                    val albumArtistSongs = visibleSongs.filter {
+                        it.displayAlbumArtist.trim().equals(albumArtistName.trim(), ignoreCase = true)
+                    }
+                    if (albumArtistSongs.isNotEmpty()) {
+                        val albumArtistPage = Album(
+                            id = albumArtistName.hashCode().toLong(),
+                            name = albumArtistName,
+                            artist = "",
+                            albumArtUri = albumArtistSongs.firstOrNull()?.albumArtUri,
+                            coverUrl = albumArtistSongs.firstOrNull()?.coverUrl,
+                            songs = albumArtistSongs
+                        )
+                        selectedAlbum = albumArtistPage
+                        isAlbumView = false
+                        onIsPlayerExpandedChange(false)
+                        onSelectedFolderChange("ALBUM_ARTISTS")
+                    }
                 },
                 onAlbumClick = { albumName, albumArtist ->
                     val albumSongs = visibleSongs.filter {
