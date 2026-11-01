@@ -53,6 +53,14 @@ data class Album(
     val year: Int?
         get() = songs.mapNotNull { it.year }.minOrNull()
 
+    /**
+     * Custom cover key. The album identity without the NUL that [keyFor]
+     * inserts, because SharedPreferences cannot store a control character in
+     * its XML. Covers saved under the old name key are read as a fallback.
+     */
+    val coverKey: String
+        get() = artist.trim().lowercase(java.util.Locale.ROOT) + "\u241F" + name.trim().lowercase(java.util.Locale.ROOT)
+
     companion object {
         /**
          * Album identity is the album artist plus the title. Ten titles in this
@@ -152,8 +160,10 @@ fun AlbumCard(
 ) {
     val context = LocalContext.current
     val categoryUpdates by CategoryCoverManager.updates.collectAsState()
-    val customCovers = remember(album.name, category, categoryUpdates) {
-        CategoryCoverManager.getCustomCovers(context, category, album.name)
+    val customCovers = remember(album.name, album.artist, category, categoryUpdates) {
+        CategoryCoverManager.getCustomCovers(context, category, album.coverKey).ifEmpty {
+            CategoryCoverManager.getCustomCovers(context, category, album.name)
+        }
     }
 
     val activeCovers = remember(customCovers, album.coverUrl, album.albumArtUri) {

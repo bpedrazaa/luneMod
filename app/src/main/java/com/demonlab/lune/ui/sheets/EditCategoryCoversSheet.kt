@@ -45,7 +45,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun EditCategoryCoversSheet(
     category: String, // "ALBUMS", "ARTISTS", "GENRES", "FOLDERS"
-    itemKey: String,  // album name, artist name, genre name, folder name
+    itemKey: String,  // album identity, artist name, genre name, folder name
+    legacyKey: String? = null, // previous key scheme, read once when the new key is empty
     title: String,
     defaultCovers: List<Any?> = emptyList(),
     onDismiss: () -> Unit,
@@ -57,8 +58,10 @@ fun EditCategoryCoversSheet(
     val blurColors = rememberBlurSheetColors(currentSong)
     val coroutineScope = rememberCoroutineScope()
 
-    val initialCovers = remember(category, itemKey) {
-        CategoryCoverManager.getCustomCovers(context, category, itemKey)
+    val initialCovers = remember(category, itemKey, legacyKey) {
+        CategoryCoverManager.getCustomCovers(context, category, itemKey).ifEmpty {
+            legacyKey?.let { CategoryCoverManager.getCustomCovers(context, category, it) } ?: emptyList()
+        }
     }
     var currentCovers by remember(category, itemKey, initialCovers) {
         mutableStateOf(initialCovers)
@@ -436,6 +439,9 @@ fun EditCategoryCoversSheet(
                         coroutineScope.launch {
                             val saved = if (currentCovers.isEmpty()) {
                                 CategoryCoverManager.clearCustomCovers(context, category, itemKey)
+                                if (legacyKey != null && legacyKey != itemKey) {
+                                    CategoryCoverManager.clearCustomCovers(context, category, legacyKey)
+                                }
                                 emptyList()
                             } else {
                                 CategoryCoverManager.saveCovers(context, category, itemKey, currentCovers)

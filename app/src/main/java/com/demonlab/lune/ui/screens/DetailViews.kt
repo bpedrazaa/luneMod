@@ -745,8 +745,12 @@ fun AlbumDetailView(
     var showEditCoversSheet by remember { mutableStateOf(false) }
 
     val categoryUpdates by CategoryCoverManager.updates.collectAsState()
-    val customCovers = remember(album.name, category, categoryUpdates) {
-        CategoryCoverManager.getCustomCovers(context, category, album.name)
+    // Artist and genre pages are not albums, so they stay keyed by their name.
+    val coverKey = if (isArtistView) album.name else album.coverKey
+    val customCovers = remember(coverKey, category, categoryUpdates) {
+        CategoryCoverManager.getCustomCovers(context, category, coverKey).ifEmpty {
+            CategoryCoverManager.getCustomCovers(context, category, album.name)
+        }
     }
 
     val albumsByKey = remember(songs, isArtistView) {
@@ -879,7 +883,8 @@ fun AlbumDetailView(
     if (showEditCoversSheet) {
         EditCategoryCoversSheet(
             category = category,
-            itemKey = album.name,
+            itemKey = coverKey,
+            legacyKey = if (isArtistView) null else album.name,
             title = album.name,
             defaultCovers = defaultCovers,
             onDismiss = { showEditCoversSheet = false }
