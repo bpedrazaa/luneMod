@@ -58,7 +58,7 @@ data class LibrarySync(
 class MusicProvider(private val context: Context) {
     companion object {
         // Bump when the cached Song shape changes; the next sync rebuilds it.
-        const val CACHE_VERSION = 2
+        const val CACHE_VERSION = 3
         val AUDIO_EXTENSIONS = setOf(
             "mp3", "flac", "wav", "aac", "m4a", "ogg", "opus", "wma", "alac", "dsf", "dff", "aiff", "ape"
         )
@@ -153,6 +153,10 @@ class MusicProvider(private val context: Context) {
         val songList = mutableListOf<Song>()
         val pendingTags = mutableListOf<PendingTag>()
 
+        // Strict scope: only files under the folder the user picked.
+        val scopeRoot = LibraryScope.resolveRoot(context)
+        val scopePrefix = scopeRoot?.let { it.trimEnd('/') + "/" }
+
         val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
         } else {
@@ -223,6 +227,7 @@ class MusicProvider(private val context: Context) {
             while (cursor.moveToNext()) {
                 val data = cursor.getString(dataColumn) ?: continue
                 if (data.isBlank()) continue
+                if (scopePrefix != null && !data.startsWith(scopePrefix)) continue
 
                 val extension = data.substringAfterLast(".", "").lowercase()
                 if (extension !in AUDIO_EXTENSIONS) continue
@@ -395,25 +400,29 @@ class MusicProvider(private val context: Context) {
                 }
             }
 
-            val musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
-            if (musicDir.exists()) scanDirForMissing(musicDir)
+            if (scopeRoot != null) {
+                scanDirForMissing(File(scopeRoot))
+            } else {
+                val musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
+                if (musicDir.exists()) scanDirForMissing(musicDir)
 
-            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            if (downloadsDir.exists()) scanDirForMissing(downloadsDir)
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                if (downloadsDir.exists()) scanDirForMissing(downloadsDir)
 
-            val documentsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
-            if (documentsDir.exists()) scanDirForMissing(documentsDir)
+                val documentsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+                if (documentsDir.exists()) scanDirForMissing(documentsDir)
 
-            val audioFolderUriStr = settingsManager.musicFolderUri
-            if (!audioFolderUriStr.isNullOrBlank()) {
-                try {
-                    val uri = Uri.parse(audioFolderUriStr)
-                    val pathSegment = uri.lastPathSegment?.substringAfterLast(":")
-                    if (!pathSegment.isNullOrBlank()) {
-                        val customFolder = File(Environment.getExternalStorageDirectory(), pathSegment)
-                        if (customFolder.exists()) scanDirForMissing(customFolder)
-                    }
-                } catch (_: Exception) {}
+                val audioFolderUriStr = settingsManager.musicFolderUri
+                if (!audioFolderUriStr.isNullOrBlank()) {
+                    try {
+                        val uri = Uri.parse(audioFolderUriStr)
+                        val pathSegment = uri.lastPathSegment?.substringAfterLast(":")
+                        if (!pathSegment.isNullOrBlank()) {
+                            val customFolder = File(Environment.getExternalStorageDirectory(), pathSegment)
+                            if (customFolder.exists()) scanDirForMissing(customFolder)
+                        }
+                    } catch (_: Exception) {}
+                }
             }
 
             if (missingFiles.isNotEmpty()) {
