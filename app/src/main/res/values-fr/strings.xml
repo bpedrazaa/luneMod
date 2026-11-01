@@ -57,7 +57,7 @@
     <!-- AI Mixes & Intelligence Section -->
     <string name="ai_core_title">Lune AI Core</string>
     <string name="ai_musical_intelligence">Intelligence Musicale</string>
-    <string name="ai_local_learning_desc">Apprentissage 100% hors ligne et privé</string>
+    <string name="ai_local_learning_desc" formatted="false">Apprentissage 100% hors ligne et privé</string>
     <string name="ai_affinity_flow">Affinité et fluidité de la bibliothèque</string>
     <string name="ai_songs_learned">%1$d chansons apprises</string>
     <string name="ai_start_smart_shuffle">Lancer le Smart Shuffle avec l\'IA</string>
