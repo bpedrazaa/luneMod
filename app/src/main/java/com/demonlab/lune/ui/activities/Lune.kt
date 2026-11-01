@@ -788,9 +788,6 @@ fun MainScreen(
     var activeIsCaseSensitive by remember(currentSortKey) {
         mutableStateOf(settingsManager.getIsCaseSensitiveSort(currentSortKey))
     }
-    val sortedSongs = remember(filteredSongs, activeSortOption, activeIsSortAscending, activeIsCaseSensitive) {
-        playbackManager.getSortedList(filteredSongs, activeSortOption, activeIsSortAscending, activeIsCaseSensitive)
-    }
 
     data class FolderEntry(val name: String, val depth: Int, val isVirtual: Boolean)
 
