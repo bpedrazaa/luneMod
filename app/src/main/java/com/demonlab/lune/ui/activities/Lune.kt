@@ -1510,7 +1510,14 @@ fun MainScreen(
                                             isDarkTheme = isDarkThemeMini,
                                             customActiveColor = listActiveControlsColor,
                                             activePlaylistId = currentSong?.let { Album.idFor(it.displayAlbumArtist, it.album) },
-                                            category = "ALBUMS"
+                                            category = "ALBUMS",
+                                            itemLetter = {
+                                                when (albumSortOption) {
+                                                    "ARTIST" -> it.artist
+                                                    "ALPHABETICAL" -> it.name
+                                                    else -> ""
+                                                }
+                                            }
                                         )
                                     } else {
                                         AlbumStackedCarousel(
@@ -1569,7 +1576,8 @@ fun MainScreen(
                                             isDarkTheme = isDarkThemeMini,
                                             customActiveColor = listActiveControlsColor,
                                             activePlaylistId = currentSong?.artist?.hashCode()?.toLong(),
-                                            category = "ARTISTS"
+                                            category = "ARTISTS",
+                                            itemLetter = { if (artistSortOption == "ALPHABETICAL") it.name else "" }
                                         )
                                     } else {
                                         AlbumStackedCarousel(
@@ -1630,7 +1638,8 @@ fun MainScreen(
                                             isDarkTheme = isDarkThemeMini,
                                             customActiveColor = listActiveControlsColor,
                                             activePlaylistId = currentSong?.displayAlbumArtist?.hashCode()?.toLong(),
-                                            category = "ALBUM_ARTISTS"
+                                            category = "ALBUM_ARTISTS",
+                                            itemLetter = { if (albumArtistSortOption == "ALPHABETICAL") it.name else "" }
                                         )
                                     } else {
                                         AlbumStackedCarousel(

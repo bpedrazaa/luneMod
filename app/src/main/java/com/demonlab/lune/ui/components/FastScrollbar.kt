@@ -9,6 +9,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -62,6 +63,92 @@ fun <T> FastScrollbar(
         MaterialTheme.colorScheme.onPrimaryContainer
     }
 ) {
+    FastScrollbarCore(
+        items = items,
+        headerItemCount = headerItemCount,
+        itemKeyOrLetter = itemKeyOrLetter,
+        firstVisibleIndex = { listState.firstVisibleItemIndex },
+        firstVisibleOffset = { listState.layoutInfo.visibleItemsInfo.firstOrNull()?.offset ?: 0 },
+        firstVisibleItemSize = { listState.layoutInfo.visibleItemsInfo.firstOrNull()?.size ?: 0 },
+        headerBottomPx = {
+            if (headerItemCount > 0) {
+                val header = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == headerItemCount - 1 }
+                if (header != null) (header.offset + header.size).toFloat().coerceAtLeast(0f) else 0f
+            } else 0f
+        },
+        scrollToItem = { index -> listState.scrollToItem(index) },
+        modifier = modifier,
+        hasBlurBackground = hasBlurBackground,
+        thumbColor = thumbColor,
+        bubbleColor = bubbleColor,
+        bubbleTextColor = bubbleTextColor
+    )
+}
+
+@Composable
+fun <T> GridFastScrollbar(
+    gridState: LazyGridState,
+    items: List<T>,
+    modifier: Modifier = Modifier,
+    itemKeyOrLetter: (T) -> String,
+    hasBlurBackground: Boolean = false,
+    useCustomControlsColor: Boolean = false,
+    controlsColorPalette: Int = 0,
+    thumbColor: Color = if (useCustomControlsColor) {
+        getControlsPrimaryColor(useCustomControlsColor, controlsColorPalette).copy(alpha = 0.85f)
+    } else if (hasBlurBackground) {
+        Color.White.copy(alpha = 0.75f)
+    } else {
+        MaterialTheme.colorScheme.primary
+    },
+    bubbleColor: Color = if (useCustomControlsColor) {
+        getControlsPrimaryColor(useCustomControlsColor, controlsColorPalette)
+    } else if (hasBlurBackground) {
+        Color.White
+    } else {
+        MaterialTheme.colorScheme.primaryContainer
+    },
+    bubbleTextColor: Color = if (useCustomControlsColor) {
+        Color.White
+    } else if (hasBlurBackground) {
+        Color.Black
+    } else {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    }
+) {
+    FastScrollbarCore(
+        items = items,
+        headerItemCount = 0,
+        itemKeyOrLetter = itemKeyOrLetter,
+        firstVisibleIndex = { gridState.firstVisibleItemIndex },
+        firstVisibleOffset = { gridState.layoutInfo.visibleItemsInfo.firstOrNull()?.offset?.y ?: 0 },
+        firstVisibleItemSize = { gridState.layoutInfo.visibleItemsInfo.firstOrNull()?.size?.height ?: 0 },
+        headerBottomPx = { 0f },
+        scrollToItem = { index -> gridState.scrollToItem(index) },
+        modifier = modifier,
+        hasBlurBackground = hasBlurBackground,
+        thumbColor = thumbColor,
+        bubbleColor = bubbleColor,
+        bubbleTextColor = bubbleTextColor
+    )
+}
+
+@Composable
+private fun <T> FastScrollbarCore(
+    items: List<T>,
+    headerItemCount: Int,
+    itemKeyOrLetter: (T) -> String,
+    firstVisibleIndex: () -> Int,
+    firstVisibleOffset: () -> Int,
+    firstVisibleItemSize: () -> Int,
+    headerBottomPx: () -> Float,
+    scrollToItem: suspend (Int) -> Unit,
+    modifier: Modifier,
+    hasBlurBackground: Boolean,
+    thumbColor: Color,
+    bubbleColor: Color,
+    bubbleTextColor: Color
+) {
     if (items.size <= 15) return
 
     val coroutineScope = rememberCoroutineScope()
@@ -80,6 +167,13 @@ fun <T> FastScrollbar(
     val currentItems by rememberUpdatedState(items)
     val currentHeaderCount by rememberUpdatedState(headerItemCount)
     val currentItemKeyOrLetter by rememberUpdatedState(itemKeyOrLetter)
+    val currentFirstVisibleIndex by rememberUpdatedState(firstVisibleIndex)
+    val currentFirstVisibleOffset by rememberUpdatedState(firstVisibleOffset)
+    val currentFirstVisibleItemSize by rememberUpdatedState(firstVisibleItemSize)
+    val currentHeaderBottomPx by rememberUpdatedState(headerBottomPx)
+    val currentScrollToItem by rememberUpdatedState(scrollToItem)
+
+    val idleHeaderBottom = if (headerItemCount > 0) currentHeaderBottomPx() else 0f
 
     val thumbWidth by animateDpAsState(
         targetValue = if (isDragging) 10.dp else 4.dp,
@@ -97,7 +191,7 @@ fun <T> FastScrollbar(
             .fillMaxHeight()
             .width(24.dp)
             .onSizeChanged { size -> containerHeight = size.height.toFloat() }
-            .pointerInput(listState) {
+            .pointerInput(Unit) {
                 var scrollJob: Job? = null
                 var lastTargetIndex = -1
 
@@ -105,26 +199,20 @@ fun <T> FastScrollbar(
                     val down = awaitFirstDown()
                     down.consume()
 
-                    val currentHeaderOffset = if (currentHeaderCount > 0) {
-                        val headerInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == currentHeaderCount - 1 }
-                        if (headerInfo != null) {
-                            (headerInfo.offset + headerInfo.size).toFloat().coerceAtLeast(0f)
-                        } else 0f
-                    } else 0f
-                    frozenTopPx = currentHeaderOffset
+                    frozenTopPx = if (currentHeaderCount > 0) currentHeaderBottomPx() else 0f
                     isDragging = true
 
                     fun updatePosition(y: Float) {
-                        val totalSongs = currentItems.size
-                        if (totalSongs <= 1) return
+                        val totalItems = currentItems.size
+                        if (totalItems <= 1) return
                         val availableHeight = (containerHeight - frozenTopPx - thumbHeightPx).coerceAtLeast(0f)
                         val targetThumbY = (y - thumbHeightPx / 2f).coerceIn(frozenTopPx, frozenTopPx + availableHeight)
                         dragThumbY = targetThumbY
                         val dragProgress = if (availableHeight > 0f) {
                             ((targetThumbY - frozenTopPx) / availableHeight).coerceIn(0f, 1f)
                         } else 0f
-                        val targetSongIndex = (dragProgress * (totalSongs - 1)).roundToInt().coerceIn(0, totalSongs - 1)
-                        val targetIndex = if (dragProgress == 0f && currentHeaderCount > 0) 0 else currentHeaderCount + targetSongIndex
+                        val targetItemOffset = (dragProgress * (totalItems - 1)).roundToInt().coerceIn(0, totalItems - 1)
+                        val targetIndex = if (dragProgress == 0f && currentHeaderCount > 0) 0 else currentHeaderCount + targetItemOffset
 
                         val actualItemIndex = targetIndex - currentHeaderCount
                         val newLetter = if (actualItemIndex in currentItems.indices) {
@@ -143,7 +231,7 @@ fun <T> FastScrollbar(
                             lastTargetIndex = targetIndex
                             scrollJob?.cancel()
                             scrollJob = coroutineScope.launch {
-                                listState.scrollToItem(targetIndex)
+                                currentScrollToItem(targetIndex)
                             }
                         }
                     }
@@ -168,7 +256,6 @@ fun <T> FastScrollbar(
                 }
             }
     ) {
-        // Thumb
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -176,24 +263,16 @@ fun <T> FastScrollbar(
                     val thumbY = if (isDragging) {
                         dragThumbY
                     } else {
-                        val currentHeaderOffset = if (headerItemCount > 0) {
-                            val headerInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == headerItemCount - 1 }
-                            if (headerInfo != null) {
-                                (headerInfo.offset + headerInfo.size).toFloat().coerceAtLeast(0f)
-                            } else 0f
+                        val availableHeight = (containerHeight - idleHeaderBottom - thumbHeightPx).coerceAtLeast(0f)
+                        val firstVisible = (currentFirstVisibleIndex() - headerItemCount).coerceAtLeast(0)
+                        val itemSize = currentFirstVisibleItemSize()
+                        val offsetFraction = if (itemSize > 0) {
+                            (-currentFirstVisibleOffset().toFloat() / itemSize.toFloat()).coerceIn(0f, 1f)
                         } else 0f
-
-                        val availableHeight = (containerHeight - currentHeaderOffset - thumbHeightPx).coerceAtLeast(0f)
-                        val firstSongVisible = (listState.firstVisibleItemIndex - headerItemCount).coerceAtLeast(0)
-                        val songItemsCount = items.size
-                        val progress = if (songItemsCount > 1) {
-                            val firstItem = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index >= headerItemCount }
-                            val offsetFraction = if (firstItem != null && firstItem.size > 0) {
-                                (-firstItem.offset.toFloat() / firstItem.size.toFloat()).coerceIn(0f, 1f)
-                            } else 0f
-                            ((firstSongVisible + offsetFraction) / (songItemsCount - 1).toFloat()).coerceIn(0f, 1f)
+                        val progress = if (items.size > 1) {
+                            ((firstVisible + offsetFraction) / (items.size - 1).toFloat()).coerceIn(0f, 1f)
                         } else 0f
-                        currentHeaderOffset + (progress * availableHeight)
+                        idleHeaderBottom + (progress * availableHeight)
                     }
                     IntOffset(-4.dp.roundToPx(), thumbY.roundToInt())
                 }
@@ -214,7 +293,6 @@ fun <T> FastScrollbar(
                 )
         )
 
-        // Bubble Indicator (Vertical Pill)
         AnimatedVisibility(
             visible = isDragging && currentLetter.isNotEmpty(),
             enter = fadeIn() + scaleIn(transformOrigin = TransformOrigin(1f, 0.5f)),

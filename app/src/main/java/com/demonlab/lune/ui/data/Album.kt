@@ -32,6 +32,7 @@ import com.demonlab.lune.tools.CategoryCoverManager
 import com.demonlab.lune.tools.Song
 import com.demonlab.lune.tools.SettingsManager
 import com.demonlab.lune.ui.components.SongCoverImage
+import com.demonlab.lune.ui.components.GridFastScrollbar
 import com.demonlab.lune.ui.components.ScrollToTopPill
 import com.demonlab.lune.ui.components.rememberScrollToTopVisibility
 import androidx.compose.ui.platform.LocalContext
@@ -86,7 +87,8 @@ fun AlbumGrid(
     isDarkTheme: Boolean = false,
     customActiveColor: Color? = null,
     activePlaylistId: Long? = null,
-    category: String = "ALBUMS"
+    category: String = "ALBUMS",
+    itemLetter: (Album) -> String = { it.name }
 ) {
     val initialIndex = remember(activePlaylistId, albums) {
         if (activePlaylistId != null) {
@@ -146,6 +148,17 @@ fun AlbumGrid(
             hasBlurBackground = hasBlurBackground,
             isDarkTheme = isDarkTheme,
             customActiveColor = customActiveColor
+        )
+
+        GridFastScrollbar(
+            gridState = gridState,
+            items = albums,
+            itemKeyOrLetter = itemLetter,
+            hasBlurBackground = hasBlurBackground,
+            thumbColor = customActiveColor?.copy(alpha = 0.85f) ?: MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(bottom = bottomPadding)
         )
     }
 }
