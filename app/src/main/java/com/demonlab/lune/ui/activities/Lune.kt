@@ -2882,6 +2882,23 @@ fun MainScreen(
                 showSearchScreen = false
                 onSelectedFolderChange("ALBUMS")
             },
+            onNavigateToAlbumArtist = { albumArtistName ->
+                val artistSongs = visibleSongs.filter {
+                    it.displayAlbumArtist.trim().equals(albumArtistName.trim(), ignoreCase = true)
+                }
+                val albumArtist = Album(
+                    id = albumArtistName.hashCode().toLong(),
+                    name = albumArtistName,
+                    artist = "",
+                    albumArtUri = artistSongs.firstOrNull()?.albumArtUri,
+                    coverUrl = artistSongs.firstOrNull()?.coverUrl,
+                    songs = artistSongs
+                )
+                selectedAlbum = albumArtist
+                isAlbumView = false
+                showSearchScreen = false
+                onSelectedFolderChange("ALBUM_ARTISTS")
+            },
             onNavigateToPlaylist = { playlist ->
                 selectedPlaylist = playlist
                 showSearchScreen = false

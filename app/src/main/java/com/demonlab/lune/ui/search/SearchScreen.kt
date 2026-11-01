@@ -53,11 +53,9 @@ import kotlinx.coroutines.withContext
 
 data class SearchResults(
     val songs: List<Song>,
-    val favoriteSongs: List<Song>,
+    val albumArtistResults: Map<Album, List<Song>>,
     val albumResults: Map<Album, List<Song>>,
-    val playlistResults: Map<Playlist, List<Song>>,
-    val tagResults: Map<String, List<Song>>,
-    val realAlbumResults: Map<Album, List<Song>> = emptyMap()
+    val playlistResults: Map<Playlist, List<Song>>
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,6 +67,7 @@ fun SearchScreen(
     onSongClick: (Song, List<Song>, String, Long) -> Unit,
     onPlayAll: (List<Song>, Boolean) -> Unit,
     onNavigateToAlbum: (Album) -> Unit,
+    onNavigateToAlbumArtist: (String) -> Unit,
     onNavigateToPlaylist: (Playlist) -> Unit,
     onNavigateToFolder: (String) -> Unit,
     onOptionsClick: (Song) -> Unit,
@@ -87,22 +86,18 @@ fun SearchScreen(
 
     var showFilterDialog by remember { mutableStateOf(false) }
     var filterSongs by remember { mutableStateOf(true) }
-    var filterPlaylists by remember { mutableStateOf(true) }
+    var filterAlbumArtists by remember { mutableStateOf(true) }
     var filterAlbums by remember { mutableStateOf(true) }
-    var filterArtists by remember { mutableStateOf(true) }
-    var filterFolders by remember { mutableStateOf(true) }
-    var filterFavorites by remember { mutableStateOf(true) }
+    var filterPlaylists by remember { mutableStateOf(true) }
     val isSearchActive = activePlaylistId == -300L
     var searchShuffle by remember { mutableStateOf(settings.getPlaylistShuffle(-300L)) }
 
     if (settings.isSectionCustomizationEnabled) {
         val hiddenTabs = settings.hiddenSectionTabs
         if ("ALL" in hiddenTabs) filterSongs = false
-        if ("FAVORITES" in hiddenTabs) filterFavorites = false
-        if ("PLAYLISTS" in hiddenTabs) filterPlaylists = false
+        if ("ALBUM_ARTISTS" in hiddenTabs) filterAlbumArtists = false
         if ("ALBUMS" in hiddenTabs) filterAlbums = false
-        if ("ARTISTS" in hiddenTabs) filterArtists = false
-        if ("FOLDERS" in hiddenTabs) filterFolders = false
+        if ("PLAYLISTS" in hiddenTabs) filterPlaylists = false
     }
 
     LaunchedEffect(isSearchActive) {
@@ -121,19 +116,6 @@ fun SearchScreen(
         }
     }
     val allAlbums = remember(allSongs) {
-        allSongs.groupBy { it.artist }
-            .map { (artistName, songs) -> 
-                Album(
-                    id = artistName.hashCode().toLong(), 
-                    name = artistName, 
-                    artist = "", 
-                    albumArtUri = songs.first().albumArtUri, 
-                    coverUrl = songs.first().coverUrl, 
-                    songs = songs.sortedWith(compareBy({ it.album }, { it.title }))
-                )
-            }.sortedBy { it.name }
-    }
-    val allRealAlbums = remember(allSongs) {
         allSongs.groupBy { Album.keyFor(it.displayAlbumArtist, it.album) }
             .map { (_, songs) ->
                 val albumName = songs.first().album.trim()
@@ -151,23 +133,19 @@ fun SearchScreen(
     val allPlaylists = viewModel.playlists
     val playlistMappings = viewModel.playlistMappings
 
-    val sTabAll = stringResource(R.string.tab_all)
-    val sTabFavorites = stringResource(R.string.tab_favorites)
-    val sTabAlbums = stringResource(R.string.tab_albums)
+    val sSectionSongs = stringResource(R.string.search_section_songs)
+    val sTabAlbumArtists = stringResource(R.string.tab_album_artists)
     val sTabAlbumsReal = stringResource(R.string.tab_albums_real)
-    val sPlaylists = stringResource(R.string.playlists)
     val sFilterTitle = stringResource(R.string.search_filter)
     val sFilterAll = stringResource(R.string.search_filter_all)
     val sFilterPlaylist = stringResource(R.string.search_filter_playlist)
     val sFilterAlbum = stringResource(R.string.search_filter_album)
-    val sFilterArtist = stringResource(R.string.search_filter_artist)
-    val sFilterFolder = stringResource(R.string.search_filter_folder)
     val sFilterCancel = stringResource(R.string.search_filter_cancel)
 
     // Typing is debounced and matched off the main thread: on a 10k-song
     // library the per-keystroke filter was enough to drop input frames.
     var searchResults by remember { mutableStateOf(emptySearchResults()) }
-    LaunchedEffect(query, allSongs, allAlbums, allRealAlbums, allPlaylists, allFolders, playlistMappings, sTabFavorites) {
+    LaunchedEffect(query, allSongs, allAlbums, allPlaylists, playlistMappings) {
         val pendingQuery = query
         if (pendingQuery.isBlank()) {
             searchResults = emptySearchResults()
@@ -179,11 +157,8 @@ fun SearchScreen(
                 query = pendingQuery,
                 allSongs = allSongs,
                 allAlbums = allAlbums,
-                allRealAlbums = allRealAlbums,
                 allPlaylists = allPlaylists,
-                playlistMappings = playlistMappings,
-                allFolders = allFolders,
-                favoritesTag = sTabFavorites
+                playlistMappings = playlistMappings
             )
         }
     }
@@ -283,10 +258,83 @@ fun SearchScreen(
                     state = listState,
                     modifier = Modifier.fillMaxSize()
                 ) {
+                if (filterAlbumArtists && searchResults.albumArtistResults.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = sTabAlbumArtists,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (blurColors.hasBlur) Color.White else MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+                    searchResults.albumArtistResults.forEach { (albumArtist, _) ->
+                        item {
+                            ListItem(
+                                colors = ListItemDefaults.colors(
+                                    containerColor = Color.Transparent,
+                                    headlineColor = blurColors.textColor
+                                ),
+                                leadingContent = {
+                                    AsyncImage(
+                                        model = albumArtist.songs.firstOrNull()?.let { it.coverUrl ?: it.uri } ?: R.drawable.ic_launcher_foreground,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(50.dp)
+                                            .clip(RoundedCornerShape(8.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                },
+                                modifier = Modifier.clickable { onNavigateToAlbumArtist(albumArtist.name) }
+                            ) {
+                                Text(albumArtist.name, maxLines = 1, overflow = TextOverflow.Ellipsis, color = blurColors.textColor)
+                            }
+                        }
+                    }
+                }
+
+                if (filterAlbums && searchResults.albumResults.isNotEmpty()) {
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = sTabAlbumsReal,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (blurColors.hasBlur) Color.White else MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+                    searchResults.albumResults.forEach { (album, _) ->
+                        item {
+                            ListItem(
+                                colors = ListItemDefaults.colors(
+                                    containerColor = Color.Transparent,
+                                    headlineColor = blurColors.textColor,
+                                    supportingColor = blurColors.textSecondaryColor
+                                ),
+                                supportingContent = { Text(album.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, color = blurColors.textSecondaryColor) },
+                                leadingContent = {
+                                    AsyncImage(
+                                        model = album.songs.firstOrNull()?.let { it.coverUrl ?: it.uri } ?: R.drawable.ic_launcher_foreground,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(50.dp)
+                                            .clip(RoundedCornerShape(8.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                },
+                                modifier = Modifier.clickable { onNavigateToAlbum(album) }
+                            ) {
+                                Text(album.name, maxLines = 1, overflow = TextOverflow.Ellipsis, color = blurColors.textColor)
+                            }
+                        }
+                    }
+                }
+
                 if (filterSongs && searchResults.songs.isNotEmpty()) {
                     item {
                         Text(
-                            text = sTabAll,
+                            text = sSectionSongs,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = if (blurColors.hasBlur) Color.White else MaterialTheme.colorScheme.primary,
@@ -421,63 +469,6 @@ fun SearchScreen(
                     }
                 }
 
-                if (filterFavorites) searchResults.tagResults[sTabFavorites]?.let { songs ->
-                    if (songs.isNotEmpty()) {
-                        item {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = sTabFavorites,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = if (blurColors.hasBlur) Color.White else MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .clickable { onNavigateToFolder("FAVORITES") }
-                                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                                    .fillMaxWidth()
-                            )
-                        }
-                        itemsIndexed(songs) { index, song ->
-                            val isFirst = index == 0
-                            val isLast = index == songs.lastIndex
-                            val isCurrent = song.id == currentlyPlayingId && activeCategory == "FAVORITES"
-                            SongItem(
-                                isFirst = isFirst,
-                                isLast = isLast,
-                                song = song,
-                                currentlyPlaying = isCurrent,
-                                isPlaying = isPlaying && isCurrent,
-                                hasBlurBackground = blurColors.hasBlur,
-                                useCustomControlsColor = blurColors.useCustomControlsColor,
-                                controlsColorPalette = blurColors.controlsColorPalette,
-                                onClick = { onSongClick(song, searchResults.favoriteSongs, "FAVORITES", -200L) },
-                                onOptionsClick = { onOptionsClick(song) },
-                                onFavoriteClick = onFavoriteClick
-                            )
-                        }
-                    } else {
-                        item {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            ListItem(
-                                colors = ListItemDefaults.colors(
-                                    containerColor = Color.Transparent,
-                                    headlineColor = blurColors.textColor,
-                                    leadingIconColor = if (blurColors.hasBlur) Color.White else MaterialTheme.colorScheme.primary
-                                ),
-                                leadingContent = { 
-                                    Icon(
-                                        Icons.Default.Favorite, 
-                                        contentDescription = null, 
-                                        tint = if (blurColors.hasBlur) Color.White else MaterialTheme.colorScheme.primary
-                                    ) 
-                                },
-                                modifier = Modifier.clickable { onNavigateToFolder("FAVORITES") }
-                            ) {
-                                Text(sTabFavorites, color = blurColors.textColor)
-                            }
-                        }
-                    }
-                }
-
                 if (filterPlaylists && searchResults.playlistResults.isNotEmpty()) {
                     item {
                         Spacer(modifier = Modifier.height(8.dp))
@@ -534,195 +525,12 @@ fun SearchScreen(
                     }
                 }
 
-                if (filterAlbums && searchResults.realAlbumResults.isNotEmpty()) {
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = sTabAlbumsReal,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (blurColors.hasBlur) Color.White else MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
-                    val realAlbumList = searchResults.realAlbumResults.toList()
-                    if (realAlbumList.isNotEmpty()) {
-                        for ((album, matchingSongs) in realAlbumList) {
-                            item {
-                                ListItem(
-                                    colors = ListItemDefaults.colors(
-                                        containerColor = Color.Transparent,
-                                        headlineColor = blurColors.textColor,
-                                        supportingColor = blurColors.textSecondaryColor
-                                    ),
-                                    supportingContent = { Text(album.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, color = blurColors.textSecondaryColor) },
-                                    leadingContent = {
-                                        AsyncImage(
-                                            model = album.songs.firstOrNull()?.let { it.coverUrl ?: it.uri } ?: R.drawable.ic_launcher_foreground,
-                                            contentDescription = null,
-                                            modifier = Modifier
-                                                .size(50.dp)
-                                                .clip(RoundedCornerShape(8.dp)),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                    },
-                                    modifier = Modifier.clickable { onNavigateToAlbum(album) }
-                                ) {
-                                    Text(album.name, maxLines = 1, overflow = TextOverflow.Ellipsis, color = blurColors.textColor)
-                                }
-                            }
-                            itemsIndexed(matchingSongs) { index, song ->
-                                val isFirst = index == 0
-                                val isLast = index == matchingSongs.lastIndex
-                                val isCurrent = song.id == currentlyPlayingId && activeCategory == "ALBUMS" && activePlaylistId == album.id
-                                SongItem(
-                                    isFirst = isFirst,
-                                    isLast = isLast,
-                                    song = song,
-                                    currentlyPlaying = isCurrent,
-                                    isPlaying = isPlaying && isCurrent,
-                                    hasBlurBackground = blurColors.hasBlur,
-                                    useCustomControlsColor = blurColors.useCustomControlsColor,
-                                    controlsColorPalette = blurColors.controlsColorPalette,
-                                    modifier = Modifier.padding(start = 32.dp),
-                                    onClick = { 
-                                        onSongClick(song, album.songs, "ALBUMS", album.id)
-                                        onNavigateToAlbum(album)
-                                    },
-                                    onOptionsClick = { onOptionsClick(song) },
-                                    onFavoriteClick = onFavoriteClick
-                                )
-                            }
-                        }
-                    }
-                }
-
-                if (filterArtists && searchResults.albumResults.isNotEmpty()) {
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = stringResource(R.string.tab_albums),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (blurColors.hasBlur) Color.White else MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
-                    val albumList = searchResults.albumResults.toList()
-                    if (albumList.isNotEmpty()) {
-                        for ((album, matchingSongs) in albumList) {
-                            item {
-                                ListItem(
-                                    colors = ListItemDefaults.colors(
-                                        containerColor = Color.Transparent,
-                                        headlineColor = blurColors.textColor,
-                                        supportingColor = blurColors.textSecondaryColor
-                                    ),
-                                    supportingContent = { Text("${album.songs.size} canciones", color = blurColors.textSecondaryColor) },
-                                    leadingContent = {
-                                        AsyncImage(
-                                            model = album.songs.firstOrNull()?.let { it.coverUrl ?: it.uri } ?: R.drawable.ic_launcher_foreground,
-                                            contentDescription = null,
-                                            modifier = Modifier
-                                                .size(50.dp)
-                                                .clip(RoundedCornerShape(8.dp)),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                    },
-                                    modifier = Modifier.clickable { onNavigateToAlbum(album) }
-                                ) {
-                                    Text(album.name, maxLines = 1, overflow = TextOverflow.Ellipsis, color = blurColors.textColor)
-                                }
-                            }
-                            itemsIndexed(matchingSongs) { index, song ->
-                                val isFirst = index == 0
-                                val isLast = index == matchingSongs.lastIndex
-                                val isCurrent = song.id == currentlyPlayingId && activeCategory == "ALBUMS" && activePlaylistId == album.id
-                                SongItem(
-                                    isFirst = isFirst,
-                                    isLast = isLast,
-                                    song = song,
-                                    currentlyPlaying = isCurrent,
-                                    isPlaying = isPlaying && isCurrent,
-                                    hasBlurBackground = blurColors.hasBlur,
-                                    useCustomControlsColor = blurColors.useCustomControlsColor,
-                                    controlsColorPalette = blurColors.controlsColorPalette,
-                                    modifier = Modifier.padding(start = 32.dp),
-                                    onClick = { 
-                                        onSongClick(song, album.songs, "ALBUMS", album.id)
-                                        onNavigateToAlbum(album)
-                                    },
-                                    onOptionsClick = { onOptionsClick(song) },
-                                    onFavoriteClick = onFavoriteClick
-                                )
-                            }
-                        }
-                    }
-                }
-
-                if (filterFolders) {
-                    searchResults.tagResults.filterKeys { it != sTabFavorites }.forEach { (tagName, songs) ->
-                        if (songs.isNotEmpty()) {
-                            item {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = tagName,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (blurColors.hasBlur) Color.White else MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier
-                                        .clickable { onNavigateToFolder(tagName) }
-                                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                                        .fillMaxWidth()
-                                )
-                            }
-                            itemsIndexed(songs) { index, song ->
-                                val isFirst = index == 0
-                                val isLast = index == songs.lastIndex
-                                val isCurrent = song.id == currentlyPlayingId && activeCategory == "FOLDERS"
-                                SongItem(
-                                    isFirst = isFirst,
-                                    isLast = isLast,
-                                    song = song,
-                                    currentlyPlaying = isCurrent,
-                                    isPlaying = isPlaying && isCurrent,
-                                    hasBlurBackground = blurColors.hasBlur,
-                                    useCustomControlsColor = blurColors.useCustomControlsColor,
-                                    controlsColorPalette = blurColors.controlsColorPalette,
-                                    onClick = {
-                                        onSongClick(song, songs, "FOLDERS", tagName.hashCode().toLong())
-                                        onNavigateToFolder(tagName)
-                                    },
-                                    onOptionsClick = { onOptionsClick(song) },
-                                    onFavoriteClick = onFavoriteClick
-                                )
-                            }
-                        } else {
-                            item {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                ListItem(
-                                    colors = ListItemDefaults.colors(
-                                        containerColor = Color.Transparent,
-                                        headlineColor = blurColors.textColor,
-                                        leadingIconColor = if (blurColors.hasBlur) Color.White else MaterialTheme.colorScheme.primary
-                                    ),
-                                    leadingContent = { 
-                                        Icon(
-                                            Icons.Default.Folder, 
-                                            contentDescription = null, 
-                                            tint = if (blurColors.hasBlur) Color.White else MaterialTheme.colorScheme.primary
-                                        ) 
-                                    },
-                                    modifier = Modifier.clickable { onNavigateToFolder(tagName) }
-                                ) {
-                                    Text(tagName, color = blurColors.textColor)
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                if (query.isNotBlank() && (!filterSongs || searchResults.songs.isEmpty()) && (!filterPlaylists || searchResults.playlistResults.isEmpty()) && (!filterAlbums || searchResults.realAlbumResults.isEmpty()) && (!filterArtists || searchResults.albumResults.isEmpty()) && (!filterFolders || searchResults.tagResults.filterKeys { it != sTabFavorites }.all { (_, songs) -> songs.isEmpty() })) {
+                if (query.isNotBlank() &&
+                    (!filterAlbumArtists || searchResults.albumArtistResults.isEmpty()) &&
+                    (!filterAlbums || searchResults.albumResults.isEmpty()) &&
+                    (!filterSongs || searchResults.songs.isEmpty()) &&
+                    (!filterPlaylists || searchResults.playlistResults.isEmpty())
+                ) {
                     item {
                         Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                             Text(text = "No results found", color = blurColors.textSecondaryColor)
@@ -752,10 +560,9 @@ fun SearchScreen(
         val sectionCustomizationEnabled = settings.isSectionCustomizationEnabled
         val hiddenTabs = settings.hiddenSectionTabs
         val isAllDisabled = sectionCustomizationEnabled && "ALL" in hiddenTabs
-        val isPlaylistsDisabled = sectionCustomizationEnabled && "PLAYLISTS" in hiddenTabs
+        val isAlbumArtistsDisabled = sectionCustomizationEnabled && "ALBUM_ARTISTS" in hiddenTabs
         val isAlbumsDisabled = sectionCustomizationEnabled && "ALBUMS" in hiddenTabs
-        val isArtistsDisabled = sectionCustomizationEnabled && "ALBUMS" in hiddenTabs
-        val isFoldersDisabled = sectionCustomizationEnabled && "FOLDERS" in hiddenTabs
+        val isPlaylistsDisabled = sectionCustomizationEnabled && "PLAYLISTS" in hiddenTabs
 
         val checkboxColors = CheckboxDefaults.colors(
             checkedColor = blurColors.primaryTint,
@@ -821,19 +628,19 @@ fun SearchScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(8.dp))
-                                    .clickable(enabled = !isPlaylistsDisabled) { filterPlaylists = !filterPlaylists }
+                                    .clickable(enabled = !isAlbumArtistsDisabled) { filterAlbumArtists = !filterAlbumArtists }
                                     .padding(vertical = 4.dp)
                             ) {
                                 Checkbox(
-                                    checked = filterPlaylists,
-                                    enabled = !isPlaylistsDisabled,
-                                    onCheckedChange = { if (!isPlaylistsDisabled) filterPlaylists = it },
+                                    checked = filterAlbumArtists,
+                                    enabled = !isAlbumArtistsDisabled,
+                                    onCheckedChange = { if (!isAlbumArtistsDisabled) filterAlbumArtists = it },
                                     colors = checkboxColors
                                 )
                                 Spacer(Modifier.width(8.dp))
                                 Text(
-                                    sFilterPlaylist,
-                                    color = if (isPlaylistsDisabled) blurColors.textSecondaryColor.copy(alpha = 0.4f) else blurColors.textColor
+                                    sTabAlbumArtists,
+                                    color = if (isAlbumArtistsDisabled) blurColors.textSecondaryColor.copy(alpha = 0.4f) else blurColors.textColor
                                 )
                             }
                             Row(
@@ -861,39 +668,19 @@ fun SearchScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(8.dp))
-                                    .clickable(enabled = !isArtistsDisabled) { filterArtists = !filterArtists }
+                                    .clickable(enabled = !isPlaylistsDisabled) { filterPlaylists = !filterPlaylists }
                                     .padding(vertical = 4.dp)
                             ) {
                                 Checkbox(
-                                    checked = filterArtists,
-                                    enabled = !isArtistsDisabled,
-                                    onCheckedChange = { if (!isArtistsDisabled) filterArtists = it },
+                                    checked = filterPlaylists,
+                                    enabled = !isPlaylistsDisabled,
+                                    onCheckedChange = { if (!isPlaylistsDisabled) filterPlaylists = it },
                                     colors = checkboxColors
                                 )
                                 Spacer(Modifier.width(8.dp))
                                 Text(
-                                    sFilterArtist,
-                                    color = if (isArtistsDisabled) blurColors.textSecondaryColor.copy(alpha = 0.4f) else blurColors.textColor
-                                )
-                            }
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable(enabled = !isFoldersDisabled) { filterFolders = !filterFolders }
-                                    .padding(vertical = 4.dp)
-                            ) {
-                                Checkbox(
-                                    checked = filterFolders,
-                                    enabled = !isFoldersDisabled,
-                                    onCheckedChange = { if (!isFoldersDisabled) filterFolders = it },
-                                    colors = checkboxColors
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    sFilterFolder,
-                                    color = if (isFoldersDisabled) blurColors.textSecondaryColor.copy(alpha = 0.4f) else blurColors.textColor
+                                    sFilterPlaylist,
+                                    color = if (isPlaylistsDisabled) blurColors.textSecondaryColor.copy(alpha = 0.4f) else blurColors.textColor
                                 )
                             }
                         }
@@ -913,10 +700,9 @@ fun SearchScreen(
                             TextButton(
                                 onClick = {
                                     filterSongs = true
-                                    filterPlaylists = true
+                                    filterAlbumArtists = true
                                     filterAlbums = true
-                                    filterArtists = true
-                                    filterFolders = true
+                                    filterPlaylists = true
                                 },
                                 modifier = Modifier.bounceClick()
                             ) {
@@ -930,49 +716,76 @@ fun SearchScreen(
     }
 }
 
+/** Exact name first, then starts-with, then contains. */
+private fun relevanceRank(value: String, query: String): Int {
+    val name = value.normalizeForSearch()
+    val search = query.normalizeForSearch()
+    return when {
+        name == search -> 0
+        name.startsWith(search) -> 1
+        else -> 2
+    }
+}
+
 private fun emptySearchResults() = SearchResults(
     songs = emptyList(),
-    favoriteSongs = emptyList(),
+    albumArtistResults = emptyMap(),
     albumResults = emptyMap(),
-    playlistResults = emptyMap(),
-    tagResults = emptyMap()
+    playlistResults = emptyMap()
 )
 
 internal fun computeSearchResults(
     query: String,
     allSongs: List<Song>,
     allAlbums: List<Album>,
-    allRealAlbums: List<Album>,
     allPlaylists: List<Playlist>,
-    playlistMappings: List<PlaylistSong>,
-    allFolders: List<String>,
-    favoritesTag: String
+    playlistMappings: List<PlaylistSong>
 ): SearchResults {
     val searchTerms = query.normalizeForSearch().split(Regex("\\s+")).filter { it.isNotBlank() }
     if (searchTerms.isEmpty()) return emptySearchResults()
 
+    // Songs match their own title only. Artist and album have their own groups.
     val matchedSongs = allSongs.filter { song ->
-        val base = "${song.title} ${song.artist} ${song.album}"
-        val target = if (song.albumArtist.isBlank()) base else "$base ${song.albumArtist}"
-        val normalizedTarget = target.normalizeForSearch()
-        searchTerms.all { term -> normalizedTarget.contains(term) }
+        val normalizedTitle = song.title.normalizeForSearch()
+        searchTerms.all { term -> normalizedTitle.contains(term) }
     }
     val matchedSongIds = matchedSongs.mapTo(HashSet()) { it.id }
 
+    // Album artists match their own name. A track title or a featured artist
+    // named "Grace" must not surface the artist here; those belong in songs.
+    val albumArtistResults = mutableMapOf<Album, List<Song>>()
+    allSongs
+        .groupBy { it.displayAlbumArtist }
+        .entries
+        .asSequence()
+        .filter { (name, _) -> name.isNotBlank() }
+        .filter { (name, _) -> searchTerms.all { term -> name.normalizeForSearch().contains(term) } }
+        .sortedWith(compareBy({ relevanceRank(it.key, query) }, { it.key.normalizeForSearch() }))
+        .forEach { (albumArtistName, artistSongs) ->
+            albumArtistResults[
+                Album(
+                    id = albumArtistName.hashCode().toLong(),
+                    name = albumArtistName,
+                    artist = "",
+                    albumArtUri = artistSongs.first().albumArtUri,
+                    coverUrl = artistSongs.first().coverUrl,
+                    songs = artistSongs
+                )
+            ] = artistSongs.filter { it.id in matchedSongIds }
+        }
+
     fun matchAlbums(albums: List<Album>): MutableMap<Album, List<Song>> {
         val results = mutableMapOf<Album, List<Song>>()
-        for (album in albums) {
-            val nameMatches = searchTerms.all { term -> album.name.normalizeForSearch().contains(term) }
-            val matchingSongs = album.songs.filter { it.id in matchedSongIds }
-            if (nameMatches || matchingSongs.isNotEmpty()) {
-                results[album] = matchingSongs
+        albums
+            .filter { album -> searchTerms.all { term -> album.name.normalizeForSearch().contains(term) } }
+            .sortedWith(compareBy({ relevanceRank(it.name, query) }, { it.name.normalizeForSearch() }))
+            .forEach { album ->
+                results[album] = album.songs.filter { it.id in matchedSongIds }
             }
-        }
         return results
     }
 
     val albumResults = matchAlbums(allAlbums)
-    val realAlbumResults = matchAlbums(allRealAlbums)
 
     // One id lookup per mapping instead of a linear scan of the whole library.
     val songsById = allSongs.associateBy { it.id }
@@ -989,37 +802,10 @@ internal fun computeSearchResults(
         }
     }
 
-    val favoriteSongs = matchedSongs.filter { it.isFavorite }
-
-    val tagResults = mutableMapOf<String, List<Song>>()
-    if (favoriteSongs.isNotEmpty()) {
-        tagResults[favoritesTag] = favoriteSongs
-    }
-
-    val matchedByFolder = matchedSongs.groupBy { it.folderName }
-    for (folder in allFolders) {
-        val normalizedFolder = folder.normalizeForSearch()
-        if (normalizedFolder == favoritesTag.normalizeForSearch() ||
-            normalizedFolder == "favorites" ||
-            normalizedFolder == "favoritos"
-        ) {
-            continue
-        }
-        val nameMatches = searchTerms.all { term -> normalizedFolder.contains(term) }
-        val folderSongs = matchedByFolder[folder]
-        if (nameMatches) {
-            tagResults[folder] = folderSongs ?: emptyList()
-        } else if (folderSongs != null) {
-            tagResults[folder] = folderSongs
-        }
-    }
-
     return SearchResults(
         songs = matchedSongs,
-        favoriteSongs = favoriteSongs,
+        albumArtistResults = albumArtistResults,
         albumResults = albumResults,
-        playlistResults = playlistResults,
-        tagResults = tagResults,
-        realAlbumResults = realAlbumResults
+        playlistResults = playlistResults
     )
 }
