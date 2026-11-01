@@ -10,6 +10,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -134,6 +135,56 @@ fun <T> GridFastScrollbar(
 }
 
 @Composable
+fun <T> PagerFastScrollbar(
+    pagerState: PagerState,
+    items: List<T>,
+    modifier: Modifier = Modifier,
+    itemKeyOrLetter: (T) -> String,
+    hasBlurBackground: Boolean = false,
+    useCustomControlsColor: Boolean = false,
+    controlsColorPalette: Int = 0,
+    thumbColor: Color = if (useCustomControlsColor) {
+        getControlsPrimaryColor(useCustomControlsColor, controlsColorPalette).copy(alpha = 0.85f)
+    } else if (hasBlurBackground) {
+        Color.White.copy(alpha = 0.75f)
+    } else {
+        MaterialTheme.colorScheme.primary
+    },
+    bubbleColor: Color = if (useCustomControlsColor) {
+        getControlsPrimaryColor(useCustomControlsColor, controlsColorPalette)
+    } else if (hasBlurBackground) {
+        Color.White
+    } else {
+        MaterialTheme.colorScheme.primaryContainer
+    },
+    bubbleTextColor: Color = if (useCustomControlsColor) {
+        Color.White
+    } else if (hasBlurBackground) {
+        Color.Black
+    } else {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    }
+) {
+    FastScrollbarCore(
+        items = items,
+        headerItemCount = 0,
+        itemKeyOrLetter = itemKeyOrLetter,
+        firstVisibleIndex = { pagerState.currentPage },
+        firstVisibleOffset = { (pagerState.currentPageOffsetFraction * 1000f).toInt() },
+        firstVisibleItemSize = { 1000 },
+        headerBottomPx = { 0f },
+        scrollToItem = { index ->
+            pagerState.scrollToPage(index.coerceIn(0, (items.size - 1).coerceAtLeast(0)))
+        },
+        modifier = modifier,
+        hasBlurBackground = hasBlurBackground,
+        thumbColor = thumbColor,
+        bubbleColor = bubbleColor,
+        bubbleTextColor = bubbleTextColor
+    )
+}
+
+@Composable
 private fun <T> FastScrollbarCore(
     items: List<T>,
     headerItemCount: Int,
@@ -174,6 +225,28 @@ private fun <T> FastScrollbarCore(
     val currentScrollToItem by rememberUpdatedState(scrollToItem)
 
     val idleHeaderBottom = if (headerItemCount > 0) currentHeaderBottomPx() else 0f
+
+    val idleThumbY = if (isDragging) {
+        dragThumbY
+    } else {
+        val availableHeight = (containerHeight - idleHeaderBottom - thumbHeightPx).coerceAtLeast(0f)
+        val firstVisible = (currentFirstVisibleIndex() - headerItemCount).coerceAtLeast(0)
+        val itemSize = currentFirstVisibleItemSize()
+        val offsetFraction = if (itemSize > 0) {
+            (-currentFirstVisibleOffset().toFloat() / itemSize.toFloat()).coerceIn(0f, 1f)
+        } else 0f
+        val progress = if (items.size > 1) {
+            ((firstVisible + offsetFraction) / (items.size - 1).toFloat()).coerceIn(0f, 1f)
+        } else 0f
+        idleHeaderBottom + (progress * availableHeight)
+    }
+
+    // The letter stays visible while scrolling, not only while dragging.
+    val idleLetter = if (isDragging) "" else {
+        currentItems.getOrNull((currentFirstVisibleIndex() - headerItemCount).coerceAtLeast(0))
+            ?.let { currentItemKeyOrLetter(it).trim().take(1).uppercase() }
+            ?: ""
+    }
 
     val thumbWidth by animateDpAsState(
         targetValue = if (isDragging) 10.dp else 4.dp,
@@ -260,21 +333,7 @@ private fun <T> FastScrollbarCore(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .offset {
-                    val thumbY = if (isDragging) {
-                        dragThumbY
-                    } else {
-                        val availableHeight = (containerHeight - idleHeaderBottom - thumbHeightPx).coerceAtLeast(0f)
-                        val firstVisible = (currentFirstVisibleIndex() - headerItemCount).coerceAtLeast(0)
-                        val itemSize = currentFirstVisibleItemSize()
-                        val offsetFraction = if (itemSize > 0) {
-                            (-currentFirstVisibleOffset().toFloat() / itemSize.toFloat()).coerceIn(0f, 1f)
-                        } else 0f
-                        val progress = if (items.size > 1) {
-                            ((firstVisible + offsetFraction) / (items.size - 1).toFloat()).coerceIn(0f, 1f)
-                        } else 0f
-                        idleHeaderBottom + (progress * availableHeight)
-                    }
-                    IntOffset(-4.dp.roundToPx(), thumbY.roundToInt())
+                    IntOffset(-4.dp.roundToPx(), idleThumbY.roundToInt())
                 }
                 .width(thumbWidth)
                 .height(thumbHeightDp)
@@ -292,6 +351,35 @@ private fun <T> FastScrollbarCore(
                     }
                 )
         )
+
+        AnimatedVisibility(
+            visible = !isDragging && idleLetter.isNotEmpty(),
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset {
+                    IntOffset(
+                        -34.dp.roundToPx(),
+                        (idleThumbY - 12.dp.toPx()).roundToInt()
+                    )
+                }
+        ) {
+            Surface(
+                shape = RoundedCornerShape(percent = 50),
+                color = bubbleColor,
+                shadowElevation = if (hasBlurBackground) 3.dp else 6.dp,
+                modifier = Modifier.size(24.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Text(
+                        text = idleLetter,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = bubbleTextColor
+                    )
+                }
+            }
+        }
 
         AnimatedVisibility(
             visible = isDragging && currentLetter.isNotEmpty(),

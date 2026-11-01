@@ -1525,7 +1525,14 @@ fun MainScreen(
                                             onAlbumClick = { selectedAlbum = it },
                                             bottomPadding = bottomPadding,
                                             hasBlurBackground = hasBlurBackgroundMini && currentSong != null,
-                                            activePlaylistId = currentSong?.let { Album.idFor(it.displayAlbumArtist, it.album) }
+                                            activePlaylistId = currentSong?.let { Album.idFor(it.displayAlbumArtist, it.album) },
+                                            itemLetter = {
+                                                when (albumSortOption) {
+                                                    "ARTIST" -> it.artist
+                                                    "ALPHABETICAL" -> it.name
+                                                    else -> ""
+                                                }
+                                            }
                                         )
                                     }
                                 }
@@ -1577,7 +1584,7 @@ fun MainScreen(
                                             customActiveColor = listActiveControlsColor,
                                             activePlaylistId = currentSong?.artist?.hashCode()?.toLong(),
                                             category = "ARTISTS",
-                                            itemLetter = { if (artistSortOption == "ALPHABETICAL") it.name else "" }
+                                            itemLetter = { it.name }
                                         )
                                     } else {
                                         AlbumStackedCarousel(
@@ -1585,7 +1592,8 @@ fun MainScreen(
                                             onAlbumClick = { selectedAlbum = it },
                                             bottomPadding = bottomPadding,
                                             hasBlurBackground = hasBlurBackgroundMini && currentSong != null,
-                                            activePlaylistId = currentSong?.artist?.hashCode()?.toLong()
+                                            activePlaylistId = currentSong?.artist?.hashCode()?.toLong(),
+                                            itemLetter = { it.name }
                                         )
                                     }
                                 }
@@ -1639,7 +1647,7 @@ fun MainScreen(
                                             customActiveColor = listActiveControlsColor,
                                             activePlaylistId = currentSong?.displayAlbumArtist?.hashCode()?.toLong(),
                                             category = "ALBUM_ARTISTS",
-                                            itemLetter = { if (albumArtistSortOption == "ALPHABETICAL") it.name else "" }
+                                            itemLetter = { it.name }
                                         )
                                     } else {
                                         AlbumStackedCarousel(
@@ -1647,7 +1655,8 @@ fun MainScreen(
                                             onAlbumClick = { selectedAlbum = it },
                                             bottomPadding = bottomPadding,
                                             hasBlurBackground = hasBlurBackgroundMini && currentSong != null,
-                                            activePlaylistId = currentSong?.displayAlbumArtist?.hashCode()?.toLong()
+                                            activePlaylistId = currentSong?.displayAlbumArtist?.hashCode()?.toLong(),
+                                            itemLetter = { it.name }
                                         )
                                     }
                                 }

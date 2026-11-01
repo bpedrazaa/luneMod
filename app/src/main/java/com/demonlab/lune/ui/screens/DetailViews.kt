@@ -1328,7 +1328,10 @@ fun AlbumDetailView(
                 listState = listState,
                 items = sortedSongs,
                 headerItemCount = 1,
-                itemKeyOrLetter = { if (sortOption == "ALPHABETICAL") it.title else "" },
+                itemKeyOrLetter = {
+                    // Album order on an artist page, so the album name is the letter.
+                    if (sortOption == "ALPHABETICAL" && isArtistView && selectedAlbumName == null) it.album else ""
+                },
                 hasBlurBackground = hasBlurBackground,
                 useCustomControlsColor = useCustomControlsColor,
                 controlsColorPalette = controlsColorPalette,

@@ -112,6 +112,7 @@ import com.demonlab.lune.tools.Song
 import com.demonlab.lune.tools.toArtwork
 import com.demonlab.lune.ui.data.Album
 import com.demonlab.lune.ui.components.SongCoverImage
+import com.demonlab.lune.ui.components.PagerFastScrollbar
 import com.demonlab.lune.ui.components.VinylRecordAsyncCover
 import com.demonlab.lune.ui.components.WaveformVisualizer
 import com.demonlab.lune.ui.activities.EqualizerActivity
@@ -145,7 +146,8 @@ fun AlbumStackedCarousel(
     onAlbumClick: (Album) -> Unit,
     bottomPadding: Dp,
     hasBlurBackground: Boolean = false,
-    activePlaylistId: Long? = null
+    activePlaylistId: Long? = null,
+    itemLetter: (Album) -> String = { it.name }
 ) {
     val initialPage = remember(activePlaylistId, albums) {
         if (activePlaylistId != null) {
@@ -161,6 +163,7 @@ fun AlbumStackedCarousel(
         }
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     VerticalPager(
         state = pagerState,
         modifier = Modifier.fillMaxSize(),
@@ -271,6 +274,17 @@ fun AlbumStackedCarousel(
                 }
             }
         }
+    }
+
+        PagerFastScrollbar(
+            pagerState = pagerState,
+            items = albums,
+            itemKeyOrLetter = itemLetter,
+            hasBlurBackground = hasBlurBackground,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(bottom = bottomPadding)
+        )
     }
 }
 
