@@ -487,16 +487,15 @@ class Lune : AppCompatActivity() {
             }
             val folders = remember(visibleFolders, rawAllSongs, sTabPlaylists, isSectionCustomizationEnabled, hiddenSectionTabs, showAiSection, defaultSectionTab) {
                 val hasFavorites = rawAllSongs.any { it.isFavorite }
-                val base = mutableListOf("RESUME")
-                if (showAiSection) base.add("MIXES")
-                base.add("ALL")
-                base.add("PLAYLISTS")
+                // Albums and album artists first, the browsing axes of this library.
+                val base = mutableListOf("ALBUMS", "ALBUM_ARTISTS", "ALL")
                 if (hasFavorites) base.add("FAVORITES")
-                base.add("ALBUMS")
                 base.add("ARTISTS")
-                base.add("ALBUM_ARTISTS")
-                base.add("GENRES")
                 if (visibleFolders.isNotEmpty()) base.add("FOLDERS")
+                base.add("GENRES")
+                base.add("PLAYLISTS")
+                if (showAiSection) base.add("MIXES")
+                base.add("RESUME")
                 if (isSectionCustomizationEnabled) {
                     base.removeAll(hiddenSectionTabs)
                     if ("RESUME" !in base && defaultSectionTab != "RESUME") base.add(0, "RESUME")
