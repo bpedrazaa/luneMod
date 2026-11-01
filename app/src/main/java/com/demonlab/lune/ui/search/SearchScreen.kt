@@ -992,25 +992,20 @@ internal fun computeSearchResults(
         tagResults[favoritesTag] = favoriteSongs
     }
 
-    allFolders.forEach { folder ->
+    val matchedByFolder = matchedSongs.groupBy { it.folderName }
+    for (folder in allFolders) {
         val normalizedFolder = folder.normalizeForSearch()
         if (normalizedFolder == favoritesTag.normalizeForSearch() ||
             normalizedFolder == "favorites" ||
             normalizedFolder == "favoritos"
         ) {
-            return@forEach
+            continue
         }
         val nameMatches = searchTerms.all { term -> normalizedFolder.contains(term) }
+        val folderSongs = matchedByFolder[folder]
         if (nameMatches) {
-            val folderSongs = allSongs.filter { it.folderName == folder && it.id in matchedSongIds }
-            tagResults[folder] = folderSongs
-        }
-    }
-
-    matchedSongs.forEach { song ->
-        val folder = song.folderName
-        if (allFolders.contains(folder) && !tagResults.containsKey(folder)) {
-            val folderSongs = allSongs.filter { it.folderName == folder && it.id in matchedSongIds }
+            tagResults[folder] = folderSongs ?: emptyList()
+        } else if (folderSongs != null) {
             tagResults[folder] = folderSongs
         }
     }
