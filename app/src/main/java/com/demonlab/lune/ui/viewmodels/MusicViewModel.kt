@@ -137,50 +137,6 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun updateMetadata(
-        song: Song,
-        title: String,
-        artist: String,
-        album: String,
-        genre: String?,
-        coverUri: android.net.Uri?,
-        onSuccess: () -> Unit
-    ) {
-        viewModelScope.launch {
-            val success = metadataManager.updateSongMetadata(
-                songId = song.id,
-                title = title,
-                artist = artist,
-                album = album,
-                genre = genre,
-                coverUri = coverUri?.toString()
-            )
-            if (success) {
-                allSongs = allSongs.map {
-                    if (it.id == song.id) it.copy(
-                        title = title,
-                        artist = artist,
-                        album = album,
-                        genre = genre ?: it.genre,
-                        coverUrl = coverUri?.toString() ?: it.coverUrl
-                    ) else it
-                }
-                onSuccess()
-                syncSongsInternal()
-            }
-        }
-    }
-
-    fun restoreOriginalMetadata(song: Song, onSuccess: () -> Unit) {
-        viewModelScope.launch {
-            val success = metadataManager.clearMetadataOverride(song.id)
-            if (success) {
-                syncSongsInternal()
-                onSuccess()
-            }
-        }
-    }
-
     fun toggleFavorite(song: Song) {
         viewModelScope.launch {
             val success = metadataManager.updateFavoriteStatus(song.id, !song.isFavorite)

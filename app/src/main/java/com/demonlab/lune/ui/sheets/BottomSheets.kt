@@ -83,7 +83,6 @@ fun SongOptionsBottomSheet(
     song: Song,
     onDismiss: () -> Unit,
     onAddToPlaylistClick: () -> Unit,
-    onEditMetadataClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -225,41 +224,6 @@ fun SongOptionsBottomSheet(
                         }
                     ) {
                         Text(stringResource(R.string.add_to_playlist), color = blurColors.textColor)
-                    }
-                }
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 1.dp)
-                        .bounceClick(),
-                    shape = RoundedCornerShape(4.dp),
-                    color = blurColors.itemContainerColor,
-                    border = blurColors.itemBorderColor?.let { BorderStroke(1.dp, it) }
-                ) {
-                    ListItem(
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        leadingContent = {
-                            Surface(
-                                shape = CircleShape,
-                                color = if (blurColors.hasBlur) blurColors.primaryTint.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        Icons.Default.Edit,
-                                        contentDescription = null,
-                                        tint = if (blurColors.hasBlur) blurColors.primaryTint else MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                        },
-                        modifier = Modifier.clickable {
-                            onDismiss()
-                            onEditMetadataClick()
-                        }
-                    ) {
-                        Text(stringResource(R.string.edit_information), color = blurColors.textColor)
                     }
                 }
                 Surface(
@@ -775,7 +739,6 @@ fun QueueBottomSheet(
     var optionsSong by remember { mutableStateOf<Song?>(null) }
     var showOptionsSheet by remember { mutableStateOf(false) }
     var showAddToPlaylist by remember { mutableStateOf(false) }
-    var showEditSheet by remember { mutableStateOf(false) }
 
     val fullQueue = playbackManager.getCurrentQueue()
     val currentIdxInFull = fullQueue.indexOfFirst { it.id == currentSong?.id }
@@ -820,10 +783,6 @@ fun QueueBottomSheet(
                 showOptionsSheet = false
                 showAddToPlaylist = true 
             },
-            onEditMetadataClick = {
-                showOptionsSheet = false
-                showEditSheet = true
-            },
             onDeleteClick = {
                 showOptionsSheet = false
                 Toast.makeText(context, "Funcionalidad de borrado disponible en la lista principal", Toast.LENGTH_SHORT).show()
@@ -837,48 +796,6 @@ fun QueueBottomSheet(
             viewModel = musicViewModel,
             playbackManager = playbackManager,
             onDismiss = { showAddToPlaylist = false }
-        )
-    }
-
-    if (showEditSheet && optionsSong != null) {
-        EditSongBottomSheet(
-            song = optionsSong!!,
-            onDismiss = { showEditSheet = false },
-            onRestore = {
-                musicViewModel.restoreOriginalMetadata(
-                    song = optionsSong!!,
-                    onSuccess = {
-                        val updatedSong = musicViewModel.allSongs.find { it.id == optionsSong!!.id }
-                        if (updatedSong != null) {
-                            playbackManager.updateSongMetadata(updatedSong)
-                        }
-                        showEditSheet = false
-                        Toast.makeText(context, context.getString(R.string.info_restored), Toast.LENGTH_SHORT).show()
-                    }
-                )
-            },
-            onSave = { updatedTitle, updatedArtist, updatedAlbum, updatedGenre, updatedCoverUri ->
-                musicViewModel.updateMetadata(
-                    song = optionsSong!!,
-                    title = updatedTitle,
-                    artist = updatedArtist,
-                    album = updatedAlbum,
-                    genre = updatedGenre,
-                    coverUri = updatedCoverUri,
-                    onSuccess = {
-                        val updatedSong = optionsSong!!.copy(
-                            title = updatedTitle,
-                            artist = updatedArtist,
-                            album = updatedAlbum,
-                            genre = updatedGenre,
-                            coverUrl = updatedCoverUri?.toString() ?: optionsSong!!.coverUrl
-                        )
-                        playbackManager.updateSongMetadata(updatedSong)
-                        Toast.makeText(context, context.getString(R.string.info_updated), Toast.LENGTH_SHORT).show()
-                        showEditSheet = false
-                    }
-                )
-            }
         )
     }
 
@@ -1563,224 +1480,6 @@ fun VisualizerSettingsBottomSheet(
                     modifier = Modifier.clickable { toggleVisualizer(false) }
                 ) {
                     Text(stringResource(R.string.visualizer_mini_player), color = blurColors.textColor)
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun EditSongBottomSheet(
-    song: Song,
-    onDismiss: () -> Unit,
-    onRestore: () -> Unit,
-    onSave: (title: String, artist: String, album: String, genre: String, coverUri: Uri?) -> Unit
-) {
-    val context = LocalContext.current
-    val playbackManager = remember { PlaybackManager.getInstance(context) }
-    val currentSong = playbackManager.currentSong ?: song
-    val blurColors = rememberBlurSheetColors(currentSong)
-    var title by remember { mutableStateOf(song.title) }
-    var artist by remember { mutableStateOf(song.artist) }
-    var album by remember { mutableStateOf(song.album) }
-    var genre by remember { mutableStateOf(song.genre ?: "") }
-    var selectedCoverUri by remember { mutableStateOf<Uri?>(null) }
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-        onResult = { uri -> selectedCoverUri = uri }
-    )
-
-    val textFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedTextColor = blurColors.textColor,
-        unfocusedTextColor = blurColors.textColor,
-        focusedBorderColor = blurColors.primaryTint,
-        unfocusedBorderColor = if (blurColors.hasBlur) Color.White.copy(alpha = 0.35f) else MaterialTheme.colorScheme.outline,
-        focusedLabelColor = blurColors.primaryTint,
-        unfocusedLabelColor = blurColors.textSecondaryColor
-    )
-
-    val sheetState = rememberBottomSheetState(
-        initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
-    )
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        containerColor = blurColors.containerColor,
-        dragHandle = null,
-        contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
-    ) {
-        AppBlurBackdrop(
-            hasBlurBackground = blurColors.hasBlur,
-            isDarkTheme = blurColors.isDark,
-            currentSong = currentSong,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
-        ) {
-            val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-            val isSmallHeight = screenHeight < 680.dp
-            val coverSize = if (isSmallHeight) 110.dp else 160.dp
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .imePadding()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 24.dp)
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    BottomSheetDefaults.DragHandle(
-                        color = if (blurColors.hasBlur) Color.White.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        stringResource(R.string.edit_information),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = blurColors.textColor
-                    )
-                    
-                    IconButton(
-                        onClick = { onRestore() },
-                        modifier = Modifier.bounceClick()
-                    ) {
-                        Icon(
-                            Icons.Default.Refresh, 
-                            contentDescription = stringResource(R.string.cd_restore),
-                            tint = blurColors.primaryTint
-                        )
-                    }
-                }
-
-                // Cover with Circular Edit Button
-                Box(
-                    modifier = Modifier
-                        .size(coverSize)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(blurColors.itemContainerColor),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AsyncImage(
-                        model = selectedCoverUri ?: song.coverUrl ?: song.albumArtUri,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                    
-                    Surface(
-                        onClick = { 
-                            photoPickerLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
-                        },
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .size(48.dp)
-                            .bounceClick(),
-                        shape = CircleShape,
-                        color = (if (blurColors.hasBlur) blurColors.primaryTint else MaterialTheme.colorScheme.primaryContainer).copy(alpha = 0.85f),
-                        tonalElevation = 4.dp
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = stringResource(R.string.cd_change_cover),
-                                tint = if (blurColors.hasBlur && blurColors.isDark) Color.Black else MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(if (isSmallHeight) 14.dp else 24.dp))
-
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text(stringResource(R.string.edit_title)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    singleLine = true,
-                    colors = textFieldColors
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = artist,
-                    onValueChange = { artist = it },
-                    label = { Text(stringResource(R.string.edit_artist)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    singleLine = true,
-                    colors = textFieldColors
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = album,
-                    onValueChange = { album = it },
-                    label = { Text(stringResource(R.string.edit_album)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    singleLine = true,
-                    colors = textFieldColors
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = genre,
-                    onValueChange = { genre = it },
-                    label = { Text(stringResource(R.string.edit_genre)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    singleLine = true,
-                    colors = textFieldColors
-                )
-
-                Spacer(modifier = Modifier.height(if (isSmallHeight) 20.dp else 32.dp))
-
-                Button(
-                    onClick = { onSave(title, artist, album, genre, selectedCoverUri) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .bounceClick(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = blurColors.primaryTint,
-                        contentColor = if (blurColors.hasBlur) Color.Black else Color.White
-                    )
-                ) {
-                    Icon(
-                        Icons.Default.Save,
-                        contentDescription = null,
-                        tint = if (blurColors.hasBlur) Color.Black else Color.White
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        stringResource(R.string.save_changes),
-                        fontWeight = FontWeight.Bold,
-                        color = if (blurColors.hasBlur) Color.Black else Color.White
-                    )
                 }
             }
         }

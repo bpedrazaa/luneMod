@@ -689,8 +689,6 @@ fun MainScreen(
         allFolders.filter { !hiddenFolders.value.contains(it) }
     }
 
-    var editingSong by remember { mutableStateOf<Song?>(null) }
-    var showEditSheet by remember { mutableStateOf(false) }
     var optionsSong by remember { mutableStateOf<Song?>(null) }
     var showOptionsSheet by remember { mutableStateOf(false) }
     var showSortSheet by remember { mutableStateOf(false) }
@@ -2821,57 +2819,11 @@ fun MainScreen(
             activePlaylistId = playbackManager.activePlaylistId
         )
     }
-    if (showEditSheet) {
-        editingSong?.let { song ->
-            EditSongBottomSheet(
-                song = song,
-                onDismiss = { showEditSheet = false },
-                onRestore = {
-                    musicViewModel.restoreOriginalMetadata(
-                        song = song,
-                        onSuccess = {
-                            val updatedSong = musicViewModel.allSongs.find { it.id == song.id }
-                            if (updatedSong != null && currentSong?.id == song.id) {
-                                playbackManager.updateSongMetadata(updatedSong)
-                                onCurrentSongChange(updatedSong)
-                            }
-                            Toast.makeText(context, context.getString(R.string.info_restored), Toast.LENGTH_SHORT).show()
-                            showEditSheet = false
-                        }
-                    )
-                },
-                onSave = { updatedTitle, updatedArtist, updatedAlbum, updatedGenre, updatedCoverUri ->
-                    musicViewModel.updateMetadata(
-                        song = song,
-                        title = updatedTitle,
-                        artist = updatedArtist,
-                        album = updatedAlbum,
-                        genre = updatedGenre,
-                        coverUri = updatedCoverUri,
-                        onSuccess = {
-                            val updatedSong = musicViewModel.allSongs.find { it.id == song.id }
-                            if (updatedSong != null && currentSong?.id == song.id) {
-                                playbackManager.updateSongMetadata(updatedSong)
-                                onCurrentSongChange(updatedSong)
-                            }
-                            Toast.makeText(context, context.getString(R.string.info_updated), Toast.LENGTH_SHORT).show()
-                            showEditSheet = false
-                        }
-                    )
-                }
-            )
-        }
-    }
-
     if (showOptionsSheet && optionsSong != null) {
         SongOptionsBottomSheet(
             song = optionsSong!!,
             onDismiss = { showOptionsSheet = false },
             onAddToPlaylistClick = { showMainAddToPlaylistDialog = true },
-            onEditMetadataClick = {
-                editingSong = optionsSong
-                showEditSheet = true
-            },
             onDeleteClick = {
                 songToDelete = optionsSong
                 showDeleteDialog = true
