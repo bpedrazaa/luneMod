@@ -468,6 +468,91 @@ fun AudioQualityBadges(
     }
 }
 
+private enum class HeaderChipStyle { Album, Artist, Quiet, Position }
+
+/**
+ * One pill in the header. Album and artist carry their own tint, the featured
+ * line and the track position use the quieter one.
+ */
+@Composable
+private fun HeaderChip(
+    text: String,
+    style: HeaderChipStyle,
+    useBlurControls: Boolean,
+    blurContainerColor: Color,
+    isAmoled: Boolean,
+    isCompact: Boolean,
+    onClick: (() -> Unit)? = null,
+    onClickLabel: String? = null,
+    leadingIcon: ImageVector? = null
+) {
+    val container = when (style) {
+        HeaderChipStyle.Album ->
+            if (useBlurControls) blurContainerColor
+            else if (isAmoled) Color(0xFF222222)
+            else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f)
+        HeaderChipStyle.Artist ->
+            if (useBlurControls) blurContainerColor
+            else if (isAmoled) Color(0xFF222222)
+            else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        HeaderChipStyle.Quiet, HeaderChipStyle.Position ->
+            if (useBlurControls) Color.White.copy(alpha = 0.14f)
+            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+    }
+    val content = when (style) {
+        HeaderChipStyle.Album ->
+            if (useBlurControls) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
+        HeaderChipStyle.Artist ->
+            if (useBlurControls) Color.White else MaterialTheme.colorScheme.onPrimaryContainer
+        else ->
+            if (useBlurControls) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val weight = if (style == HeaderChipStyle.Album || style == HeaderChipStyle.Artist) {
+        FontWeight.Bold
+    } else {
+        FontWeight.SemiBold
+    }
+    val labelStyle = if (isCompact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium
+    val padHorizontal = if (isCompact) 8.dp else 12.dp
+    val padVertical = if (isCompact) 2.dp else 4.dp
+
+    Surface(
+        color = container,
+        shape = RoundedCornerShape(percent = 50),
+        modifier = if (onClick != null) {
+            Modifier
+                .bounceClick(0.95f)
+                .clickable(onClickLabel = onClickLabel, onClick = onClick)
+        } else {
+            Modifier
+        }
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(horizontal = padHorizontal, vertical = padVertical)
+        ) {
+            if (leadingIcon != null) {
+                Icon(
+                    imageVector = leadingIcon,
+                    contentDescription = null,
+                    tint = if (useBlurControls) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f),
+                    modifier = Modifier.size(if (isCompact) 12.dp else 14.dp)
+                )
+            }
+            Text(
+                text = text,
+                style = labelStyle,
+                color = content,
+                fontWeight = weight,
+                maxLines = 1,
+                softWrap = false,
+                textAlign = TextAlign.Start
+            )
+        }
+    }
+}
+
 /**
  * One header line. When the content is wider than the header it glides on its own
  * cycle, and it holds still while a finger is down so a tap lands on what is seen.
@@ -612,80 +697,26 @@ fun UnifiedMarqueeHeader(
         } else {
             MaterialTheme.typography.headlineSmall
         }
-        val chipLabelStyle = if (isCompact) {
-            MaterialTheme.typography.labelSmall
-        } else {
-            MaterialTheme.typography.labelMedium
-        }
-        val chipPaddingV = if (isCompact) 2.dp else 4.dp
-        // One rhythm: the title and the audio row are set apart, the identity
-        // chips sit closer together.
+        val rowGap = if (isCompact) 2.dp else 6.dp
         val titleGap = if (isCompact) 2.dp else 8.dp
         val chipGap = if (isCompact) 2.dp else 6.dp
         val featureGap = if (isCompact) 2.dp else 4.dp
         val infoGap = if (isCompact) 2.dp else 10.dp
+        val chipSpacing = 6.dp
 
-        val albumChip: @Composable () -> Unit = {
-            Surface(
-                color = if (useBlurControls) blurContainerColor else if (isAmoled) Color(0xFF222222) else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f),
-                shape = RoundedCornerShape(percent = 50),
-                modifier = Modifier
-                    .bounceClick(0.95f)
-                    .clickable(
-                        onClickLabel = stringResource(R.string.mod_open_album)
-                    ) { onAlbumClick?.invoke(song.album, song.displayAlbumArtist) }
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.padding(
-                        horizontal = if (isCompact) 8.dp else 12.dp,
-                        vertical = chipPaddingV
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Album,
-                        contentDescription = null,
-                        tint = if (useBlurControls) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f),
-                        modifier = Modifier.size(if (isCompact) 12.dp else 14.dp)
-                    )
-                    Text(
-                        text = song.album,
-                        style = chipLabelStyle,
-                        color = if (useBlurControls) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        softWrap = false,
-                        textAlign = TextAlign.Start
-                    )
-                }
-            }
+        // Position in the album, from the file tag. Both halves have to be known
+        // for the chip to say anything useful.
+        val trackPosition = if (song.trackNumber > 0 && song.totalTracks > 0) {
+            "${song.trackNumber}/${song.totalTracks}"
+        } else null
+
+        val openAlbumLabel = stringResource(R.string.mod_open_album)
+        val openAlbumArtistLabel = stringResource(R.string.mod_open_album_artist)
+        val openAlbum: (() -> Unit)? = onAlbumClick?.let { click ->
+            { click(song.album, song.displayAlbumArtist) }
         }
-
-        val artistChip: @Composable () -> Unit = {
-            Surface(
-                color = if (useBlurControls) blurContainerColor else if (isAmoled) Color(0xFF222222) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(percent = 50),
-                modifier = Modifier
-                    .bounceClick(0.95f)
-                    .clickable(
-                        onClickLabel = stringResource(R.string.mod_open_album_artist)
-                    ) { onAlbumArtistClick?.invoke(song.displayAlbumArtist) }
-            ) {
-                Text(
-                    text = song.displayAlbumArtist,
-                    style = chipLabelStyle,
-                    color = if (useBlurControls) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    softWrap = false,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier.padding(
-                        horizontal = if (isCompact) 8.dp else 12.dp,
-                        vertical = chipPaddingV
-                    )
-                )
-            }
+        val openAlbumArtist: (() -> Unit)? = onAlbumArtistClick?.let { click ->
+            { click(song.displayAlbumArtist) }
         }
 
         // The track artist plus its guests, only when it says more than the chip.
@@ -713,36 +744,64 @@ fun UnifiedMarqueeHeader(
 
             if (song.album.isNotBlank()) {
                 ScrollingHeaderLine(spacingPx = spacingPx, speedPxPerSec = speedPxPerSec) {
-                    albumChip()
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(chipSpacing)
+                    ) {
+                        HeaderChip(
+                            text = song.album,
+                            style = HeaderChipStyle.Album,
+                            useBlurControls = useBlurControls,
+                            blurContainerColor = blurContainerColor,
+                            isAmoled = isAmoled,
+                            isCompact = isCompact,
+                            onClick = openAlbum,
+                            onClickLabel = openAlbumLabel,
+                            leadingIcon = Icons.Outlined.Album
+                        )
+                        if (trackPosition != null) {
+                            HeaderChip(
+                                text = trackPosition,
+                                style = HeaderChipStyle.Position,
+                                useBlurControls = useBlurControls,
+                                blurContainerColor = blurContainerColor,
+                                isAmoled = isAmoled,
+                                isCompact = isCompact,
+                                onClick = openAlbum,
+                                onClickLabel = openAlbumLabel
+                            )
+                        }
+                    }
                 }
                 Spacer(modifier = Modifier.height(chipGap))
             }
 
             if (song.displayAlbumArtist.isNotBlank()) {
                 ScrollingHeaderLine(spacingPx = spacingPx, speedPxPerSec = speedPxPerSec) {
-                    artistChip()
+                    HeaderChip(
+                        text = song.displayAlbumArtist,
+                        style = HeaderChipStyle.Artist,
+                        useBlurControls = useBlurControls,
+                        blurContainerColor = blurContainerColor,
+                        isAmoled = isAmoled,
+                        isCompact = isCompact,
+                        onClick = openAlbumArtist,
+                        onClickLabel = openAlbumArtistLabel
+                    )
                 }
             }
 
             if (!isCompact && featuredLine != null) {
                 Spacer(modifier = Modifier.height(featureGap))
                 ScrollingHeaderLine(spacingPx = spacingPx, speedPxPerSec = speedPxPerSec) {
-                    // Quieter than the artist chip so the three pills stay distinct.
-                    Surface(
-                        color = if (useBlurControls) Color.White.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                        shape = RoundedCornerShape(percent = 50)
-                    ) {
-                        Text(
-                            text = featuredLine,
-                            style = chipLabelStyle,
-                            color = if (useBlurControls) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            softWrap = false,
-                            textAlign = TextAlign.Start,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = chipPaddingV)
-                        )
-                    }
+                    HeaderChip(
+                        text = featuredLine,
+                        style = HeaderChipStyle.Quiet,
+                        useBlurControls = useBlurControls,
+                        blurContainerColor = blurContainerColor,
+                        isAmoled = isAmoled,
+                        isCompact = isCompact
+                    )
                 }
             }
 
