@@ -39,7 +39,9 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.widget.Toast
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.demonlab.lune.tools.PlaylistBackupManager
 import com.demonlab.lune.tools.MusicProvider
 import com.demonlab.lune.tools.ScanNotifier
@@ -363,8 +365,11 @@ fun SettingsScreen(
                                     scanTotal = 0
                                     var notified = false
                                     val result = musicProvider.refreshLibrary { done, total ->
-                                        scanDone = done
-                                        scanTotal = total
+                                        // The progress callback runs on the scan's IO context.
+                                        withContext(Dispatchers.Main) {
+                                            scanDone = done
+                                            scanTotal = total
+                                        }
                                         notified = true
                                         ScanNotifier.update(context, done, total)
                                     }
