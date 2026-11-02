@@ -58,11 +58,11 @@ data class LibrarySync(
 class MusicProvider(private val context: Context) {
     companion object {
         // Bump when the cached Song shape changes; the next sync rebuilds it.
-        const val CACHE_VERSION = 6
+        const val CACHE_VERSION = 7
         // Bump when the tag reader's output changes. Rows carry the epoch they
         // were read with, so a bump reads every row once more without losing a
         // partial pass.
-        const val TAG_CACHE_VERSION = 7
+        const val TAG_CACHE_VERSION = 8
         val AUDIO_EXTENSIONS = setOf(
             "mp3", "flac", "wav", "aac", "m4a", "ogg", "opus", "wma", "alac", "dsf", "dff", "aiff", "ape"
         )
@@ -339,6 +339,7 @@ class MusicProvider(private val context: Context) {
                 // MediaStore's track column can carry disc * 1000 + track even
                 // when no tag was cached.
                 if (trackNumber > 999) trackNumber %= 1000
+                val totalTracks = cached?.totalTracks ?: 0
                 val mediaStoreYear = if (yearColumn != -1) {
                     cursor.getInt(yearColumn).takeIf { it in 1000..2200 }
                 } else null
@@ -393,7 +394,7 @@ class MusicProvider(private val context: Context) {
                         id, albumId, title, artist, album, duration, contentUri, data,
                         dateAdded, albumArtUri, genre, folderName, isHiFi, coverUrl, isFavorite, null,
                         format, bitrate, trackNumber, isHiRes, sampleRate, bitDepth, albumArtist,
-                        year = year
+                        year = year, totalTracks = totalTracks
                     )
                 )
             }
@@ -544,6 +545,7 @@ class MusicProvider(private val context: Context) {
                         tagAlbum = tags.album,
                         tagGenre = tags.genre,
                         tagTrack = tags.trackNumber,
+                        totalTracks = tags.totalTracks,
                         year = tags.year,
                         epoch = TAG_CACHE_VERSION
                     )

@@ -24,7 +24,8 @@ object AudioTagReader {
         val album: String? = null,
         val genre: String? = null,
         val trackNumber: Int? = null,
-        val year: Int? = null
+        val year: Int? = null,
+        val totalTracks: Int? = null
     ) {
         /** Every field null means the read produced nothing usable. */
         fun isBlank(): Boolean = this == Tags()
@@ -41,6 +42,7 @@ object AudioTagReader {
         var genre: String? = null
         var trackNumber: Int? = null
         var year: Int? = null
+        var totalTracks: Int? = null
 
         val retriever = MediaMetadataRetriever()
         try {
@@ -52,10 +54,9 @@ object AudioTagReader {
             album = extract(retriever, MediaMetadataRetriever.METADATA_KEY_ALBUM)
             genre = extract(retriever, MediaMetadataRetriever.METADATA_KEY_GENRE)
             year = parseYear(extract(retriever, MediaMetadataRetriever.METADATA_KEY_YEAR))
-            trackNumber = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER)
-                ?.substringBefore("/")
-                ?.toIntOrNull()
-                ?.takeIf { it > 0 }
+            val cdTrack = extract(retriever, MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER)
+            trackNumber = cdTrack?.substringBefore("/")?.toIntOrNull()?.takeIf { it > 0 }
+            totalTracks = totalOf(cdTrack)
             bitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)
                 ?.toIntOrNull()
                 ?.takeIf { it > 0 }
@@ -87,6 +88,7 @@ object AudioTagReader {
             sampleRate = sampleRate ?: tag.sampleRate
             bitDepth = bitDepth ?: tag.bitDepth
             trackNumber = trackNumber ?: tag.trackNumber
+            totalTracks = tag.totalTracks ?: totalTracks
             year = year ?: tag.year
         }
 
@@ -95,7 +97,7 @@ object AudioTagReader {
             year = Id3YearReader.readYear(file)
         }
 
-        return Tags(albumArtist, bitrate, sampleRate, bitDepth, title, artist, album, genre, trackNumber, year)
+        return Tags(albumArtist, bitrate, sampleRate, bitDepth, title, artist, album, genre, trackNumber, year, totalTracks)
     }
 
     private fun readWithJaudiotagger(file: File): Tags? {
@@ -113,6 +115,8 @@ object AudioTagReader {
                 album = tagField(tag, FieldKey.ALBUM),
                 genre = tagField(tag, FieldKey.GENRE),
                 trackNumber = tagField(tag, FieldKey.TRACK)?.substringBefore("/")?.toIntOrNull()?.takeIf { it > 0 },
+                totalTracks = totalOf(tagField(tag, FieldKey.TRACK))
+                    ?: tagField(tag, FieldKey.TRACK_TOTAL)?.toIntOrNull()?.takeIf { it > 0 },
                 year = parseYear(tagField(tag, FieldKey.YEAR))
             )
         } catch (_: Throwable) {
@@ -133,6 +137,10 @@ object AudioTagReader {
         val year = match.groupValues[1].toIntOrNull() ?: return null
         return year.takeIf { it in 1000..2200 }
     }
+
+    /** The total in an "n/m" value, or null when there is no usable total. */
+    internal fun totalOf(raw: String?): Int? =
+        raw?.substringAfter("/", "")?.toIntOrNull()?.takeIf { it > 0 }
 
     private fun tagField(tag: org.jaudiotagger.tag.Tag?, key: FieldKey): String? {
         if (tag == null) return null

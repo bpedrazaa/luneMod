@@ -47,4 +47,13 @@ class AudioTagReaderYearTest {
         assertFalse(AudioTagReader.Tags(albumArtist = "B").isBlank())
         assertFalse(AudioTagReader.Tags(bitrate = 320000).isBlank())
     }
+    @Test
+    fun testTrackTotalParsing() {
+        assertEquals(5, AudioTagReader.totalOf("4/5"))
+        assertEquals(12, AudioTagReader.totalOf("12/12"))
+        assertNull(AudioTagReader.totalOf("4"))
+        assertNull(AudioTagReader.totalOf("4/0"))
+        assertNull(AudioTagReader.totalOf("4/x"))
+        assertNull(AudioTagReader.totalOf(null))
+    }
 }

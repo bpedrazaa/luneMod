@@ -254,11 +254,12 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             val bitDepth = tag.bitDepth ?: song.bitDepth
             val bitrate = tag.bitrate ?: song.bitrate
             val year = song.year ?: tag.year
+            val totalTracks = tag.totalTracks ?: song.totalTracks
             val isHiRes = song.isHiRes || looksHiRes(sampleRate, bitDepth, song.format)
 
             if (albumArtist == song.albumArtist && sampleRate == song.sampleRate &&
                 bitDepth == song.bitDepth && bitrate == song.bitrate && year == song.year &&
-                isHiRes == song.isHiRes
+                totalTracks == song.totalTracks && isHiRes == song.isHiRes
             ) {
                 song
             } else {
@@ -269,6 +270,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                     bitDepth = bitDepth,
                     bitrate = bitrate,
                     year = year,
+                    totalTracks = totalTracks,
                     isHiRes = isHiRes
                 )
             }

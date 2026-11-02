@@ -26,7 +26,9 @@ data class Song(
     val sampleRate: Int? = null,
     val bitDepth: Int? = null,
     val albumArtist: String = "",
-    val year: Int? = null
+    val year: Int? = null,
+    /** Tracks the file tag claims for this album, 0 when the tag has no total. */
+    val totalTracks: Int = 0
 ) {
     /** Album artist when tagged, otherwise the track artist. */
     val displayAlbumArtist: String

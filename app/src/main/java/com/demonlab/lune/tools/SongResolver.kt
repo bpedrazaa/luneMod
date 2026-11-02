@@ -52,6 +52,7 @@ object SongResolver {
         var genre: String? = null
         var bitrate: Int? = null
         var trackNumber = 0
+        var totalTracks = 0
         var mimeType: String? = null
         var albumArtist: String? = null
 
@@ -73,7 +74,9 @@ object SongResolver {
             duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
             genre = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE)
             bitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toIntOrNull()
-            trackNumber = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER)?.toIntOrNull() ?: 0
+            val cdTrack = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER)
+            trackNumber = cdTrack?.toIntOrNull() ?: 0
+            totalTracks = cdTrack?.substringAfter("/", "")?.toIntOrNull() ?: 0
             mimeType = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE)
             albumArtist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
         } catch (e: Exception) {
@@ -142,6 +145,12 @@ object SongResolver {
                         if (!tTrack.isNullOrBlank() && trackNumber == 0) {
                             trackNumber = tTrack.substringBefore("/").toIntOrNull() ?: trackNumber
                         }
+                        val tTotal = runCatching { tag.getFirst(org.jaudiotagger.tag.FieldKey.TRACK_TOTAL) }.getOrNull()?.trim()
+                        if (!tTotal.isNullOrBlank()) {
+                            totalTracks = tTotal.toIntOrNull() ?: totalTracks
+                        } else if (tTrack?.contains("/") == true) {
+                            totalTracks = tTrack.substringAfter("/").toIntOrNull() ?: totalTracks
+                        }
                     }
                     val header = audioFile.audioHeader
                     if (duration == 0L) duration = header.trackLength * 1000L
@@ -207,6 +216,7 @@ object SongResolver {
             format = format,
             bitrate = bitrate,
             trackNumber = trackNumber,
+            totalTracks = totalTracks,
             isHiRes = isHiFi,
             albumArtist = CharsetUtils.sanitizeText(albumArtist ?: "")
                 .takeUnless { it.equals("<unknown>", ignoreCase = true) }

@@ -330,7 +330,11 @@ fun SongInfoBottomSheet(
         stringResource(R.string.mod_info_album_artist) to song.displayAlbumArtist.ifBlank { none },
         stringResource(R.string.edit_album) to song.album.ifBlank { none },
         stringResource(R.string.mod_info_year) to (song.year?.toString() ?: none),
-        stringResource(R.string.sort_track_number) to (if (song.trackNumber > 0) song.trackNumber.toString() else none),
+        stringResource(R.string.sort_track_number) to (when {
+            song.trackNumber <= 0 -> none
+            song.totalTracks > 0 -> "${song.trackNumber}/${song.totalTracks}"
+            else -> song.trackNumber.toString()
+        }),
         stringResource(R.string.edit_genre) to (song.genre?.takeIf { it.isNotBlank() } ?: none),
         stringResource(R.string.sort_duration) to formatDuration(song.duration),
         stringResource(R.string.mod_info_folder) to (song.folderName.ifBlank { none }),
