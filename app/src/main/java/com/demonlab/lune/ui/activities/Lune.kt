@@ -479,9 +479,6 @@ class Lune : AppCompatActivity() {
             val allFolders = remember(rawAllSongs) {
                 rawAllSongs.map { it.folderName }.distinct().sorted()
             }
-            val allAlbumsList = remember(rawAllSongs) {
-                rawAllSongs.map { it.album }.distinct().sorted()
-            }
             val visibleFolders = remember(allFolders, hiddenFolders.value) {
                 allFolders.filter { !hiddenFolders.value.contains(it) }
             }
@@ -514,13 +511,6 @@ class Lune : AppCompatActivity() {
             val visibleSongs = remember(rawAllSongs, hiddenFolders.value) {
                 rawAllSongs.filter { !hiddenFolders.value.contains(it.folderName) }
             }
-            val filteredSongs = remember(visibleSongs, selectedFolder) {
-                when (selectedFolder) {
-                    TAB_RESUME, TAB_MIXES, TAB_ALL, TAB_ALBUMS, TAB_ARTISTS, "GENRES" -> visibleSongs
-                    TAB_FAVORITES -> visibleSongs.filter { it.isFavorite }
-                    else -> visibleSongs.filter { it.folderName == selectedFolder }
-                }
-            }
 
             // Theme State (No animation)
             var themeMode by remember { mutableIntStateOf(settingsManager.themeMode) }
@@ -545,11 +535,9 @@ class Lune : AppCompatActivity() {
                         settingsManager.themeMode = newMode
                     },
                     rawAllSongs = rawAllSongs,
-                    filteredSongs = filteredSongs,
                     folders = folders,
                     isSectionCustomizationEnabled = isSectionCustomizationEnabled,
                     allFolders = allFolders,
-                    allAlbums = allAlbumsList,
                     selectedFolder = selectedFolder,
                     onSelectedFolderChange = { selectedFolder = it },
                     defaultSectionTab = defaultSectionTab,
@@ -616,11 +604,9 @@ fun MainScreen(
     themeMode: Int,
     onThemeModeChange: () -> Unit,
     rawAllSongs: List<Song>,
-    filteredSongs: List<Song>,
     folders: List<String>,
     isSectionCustomizationEnabled: Boolean,
     allFolders: List<String>,
-    allAlbums: List<String>,
     selectedFolder: String,
     onSelectedFolderChange: (String) -> Unit,
     defaultSectionTab: String = "",
