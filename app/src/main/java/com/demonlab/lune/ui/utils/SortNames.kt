@@ -4,13 +4,21 @@ import java.util.Locale
 
 /**
  * Artist names are sorted and indexed past a leading article, so "The
- * Strokes", "A Band" and "An Ocean" file under S, B and O.
+ * Strokes", "A Band", "Los Prisioneros" and "Le Tigre" file under S, B, P
+ * and T. A word that merely starts with those letters ("Lana", "Elvis") is
+ * left alone, because the article has to be followed by a space.
  */
+private val LEADING_ARTICLES = listOf(
+    "the ", "an ", "a ",
+    "los ", "las ", "les ", "el ", "la ", "lo ", "le ",
+    "unos ", "unas ", "una ", "un "
+)
+
 fun artistSortName(name: String?, caseSensitive: Boolean = false): String {
     val trimmed = name?.trim().orEmpty()
     if (trimmed.isEmpty()) return ""
     var stripped = trimmed
-    for (article in listOf("the ", "an ", "a ")) {
+    for (article in LEADING_ARTICLES) {
         if (trimmed.length > article.length &&
             trimmed.substring(0, article.length).equals(article, ignoreCase = true)
         ) {

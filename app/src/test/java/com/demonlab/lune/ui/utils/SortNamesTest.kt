@@ -45,6 +45,28 @@ class SortNamesTest {
     }
 
     @Test
+    fun testSpanishAndFrenchArticlesAreIgnoredForArtists() {
+        assertEquals("prisioneros", artistSortName("Los Prisioneros"))
+        assertEquals("roux", artistSortName("La Roux"))
+        assertEquals("tigre", artistSortName("Le Tigre"))
+        assertEquals("tri", artistSortName("El Tri"))
+        assertEquals("P", artistLetter("Los Prisioneros"))
+        assertEquals("R", artistLetter("La Roux"))
+        assertEquals("T", artistLetter("Le Tigre"))
+        assertEquals("Prisioneros", artistSortName("Los Prisioneros", caseSensitive = true))
+    }
+
+    @Test
+    fun testWordsThatStartWithAnArticleAreKept() {
+        assertEquals("lana del rey", artistSortName("Lana Del Rey"))
+        assertEquals("elvis presley", artistSortName("Elvis Presley"))
+        assertEquals("loser", artistSortName("Loser"))
+        assertEquals("lassie", artistSortName("Lassie"))
+        assertEquals("L", artistLetter("Lana Del Rey"))
+        assertEquals("E", artistLetter("Elvis Presley"))
+    }
+
+    @Test
     fun testAlbumNamesKeepTheirFirstLetter() {
         assertEquals("T", firstLetter("The Classics"))
         assertEquals("D", firstLetter("Deliverance"))
