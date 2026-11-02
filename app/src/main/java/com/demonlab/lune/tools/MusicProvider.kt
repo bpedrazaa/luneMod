@@ -300,7 +300,7 @@ class MusicProvider(private val context: Context) {
                     if (!cached.tagAlbum.isNullOrBlank()) {
                         album = CharsetUtils.sanitizeText(cached.tagAlbum)
                     }
-                    if (!cached.tagGenre.isNullOrBlank() && (forceTagValues || genre.isNullOrBlank())) {
+                    if (!cached.tagGenre.isNullOrBlank()) {
                         genre = CharsetUtils.sanitizeText(cached.tagGenre)
                     }
                     // MediaStore encodes a multi-disc track as disc * 1000 + track,
