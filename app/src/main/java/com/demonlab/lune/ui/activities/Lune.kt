@@ -999,6 +999,18 @@ fun MainScreen(
         if (genreSortAscending) base.sortedWith(comparator) else base.sortedWith(comparator.reversed())
     }
 
+    // A jump letter only means something when the list is ordered by name. In the
+    // count sorts it would hop between initials with no alphabetical grouping.
+    val artistItemLetter: (Album) -> String = {
+        if (artistSortOption == "TRACK_COUNT" || artistSortOption == "ALBUM_COUNT") "" else artistLetter(it.name)
+    }
+    val albumArtistItemLetter: (Album) -> String = {
+        if (albumArtistSortOption == "TRACK_COUNT" || albumArtistSortOption == "ALBUM_COUNT") "" else artistLetter(it.name)
+    }
+    val genreItemLetter: (Album) -> String = {
+        if (genreSortOption == "TRACK_COUNT") "" else firstLetter(it.name)
+    }
+
     LaunchedEffect(selectedFolder) {
         if (selectedFolder.isNotEmpty()) {
             settingsManager.lastCategory = selectedFolder
@@ -1662,7 +1674,7 @@ fun MainScreen(
                                             customActiveColor = listActiveControlsColor,
                                             activePlaylistId = currentSong?.artist?.hashCode()?.toLong(),
                                             category = "ARTISTS",
-                                            itemLetter = { artistLetter(it.name) }
+                                            itemLetter = artistItemLetter
                                         )
                                     } else {
                                         AlbumStackedCarousel(
@@ -1671,7 +1683,7 @@ fun MainScreen(
                                             bottomPadding = bottomPadding,
                                             hasBlurBackground = hasBlurBackgroundMini && currentSong != null,
                                             activePlaylistId = currentSong?.artist?.hashCode()?.toLong(),
-                                            itemLetter = { artistLetter(it.name) }
+                                            itemLetter = artistItemLetter
                                         )
                                     }
                                 }
@@ -1725,7 +1737,7 @@ fun MainScreen(
                                             customActiveColor = listActiveControlsColor,
                                             activePlaylistId = currentSong?.displayAlbumArtist?.hashCode()?.toLong(),
                                             category = "ALBUM_ARTISTS",
-                                            itemLetter = { artistLetter(it.name) }
+                                            itemLetter = albumArtistItemLetter
                                         )
                                     } else {
                                         AlbumStackedCarousel(
@@ -1734,7 +1746,7 @@ fun MainScreen(
                                             bottomPadding = bottomPadding,
                                             hasBlurBackground = hasBlurBackgroundMini && currentSong != null,
                                             activePlaylistId = currentSong?.displayAlbumArtist?.hashCode()?.toLong(),
-                                            itemLetter = { artistLetter(it.name) }
+                                            itemLetter = albumArtistItemLetter
                                         )
                                     }
                                 }
@@ -1787,7 +1799,8 @@ fun MainScreen(
                                             isDarkTheme = isDarkThemeMini,
                                             customActiveColor = listActiveControlsColor,
                                             activePlaylistId = null,
-                                            category = "GENRES"
+                                            category = "GENRES",
+                                            itemLetter = genreItemLetter
                                         )
                                     } else {
                                         AlbumStackedCarousel(
@@ -1795,7 +1808,8 @@ fun MainScreen(
                                             onAlbumClick = { selectedAlbum = it },
                                             bottomPadding = bottomPadding,
                                             hasBlurBackground = hasBlurBackgroundMini && currentSong != null,
-                                            activePlaylistId = null
+                                            activePlaylistId = null,
+                                            itemLetter = genreItemLetter
                                         )
                                     }
                                 }
