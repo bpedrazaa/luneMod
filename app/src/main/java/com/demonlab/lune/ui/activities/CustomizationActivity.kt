@@ -14,7 +14,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import android.content.Intent
 import androidx.compose.material3.*
 import com.demonlab.lune.ui.components.BouncySwitch
@@ -322,19 +321,16 @@ fun CustomizationScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             maxItemsInEachRow = 4
                         ) {
-                            val sectionItems = listOf(
-                                "ALL" to Icons.Default.LibraryMusic,
-                                "FAVORITES" to Icons.Default.Favorite,
-                                "PLAYLISTS" to Icons.AutoMirrored.Filled.QueueMusic,
-                                "ALBUMS" to Icons.Default.Album,
-                                "ARTISTS" to Icons.Default.Person,
-                                "ALBUM_ARTISTS" to SectionUi.icon("ALBUM_ARTISTS"),
-                                "GENRES" to Icons.Default.Category,
-                                "FOLDERS" to Icons.Default.Folder
+                            // Labels and icons come from SectionUi so this row
+                            // cannot drift from the section menu.
+                            val sectionKeys = listOf(
+                                "ALL", "FAVORITES", "PLAYLISTS", "ALBUMS",
+                                "ARTISTS", "ALBUM_ARTISTS", "GENRES", "FOLDERS"
                             )
 
-                            sectionItems.forEach { (key, icon) ->
+                            sectionKeys.forEach { key ->
                                 val isActive = key !in hiddenSectionTabs
+                                val sectionLabel = SectionUi.labelRes(key)?.let { stringResource(it) } ?: key
                                 Surface(
                                     onClick = {
                                         val newHidden = hiddenSectionTabs.toMutableSet()
@@ -354,8 +350,8 @@ fun CustomizationScreen(
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(
-                                            icon,
-                                            contentDescription = null,
+                                            SectionUi.icon(key),
+                                            contentDescription = sectionLabel,
                                             tint = if (isActive) {
                                                 if (hasBlurBackground) Color.Black else MaterialTheme.colorScheme.onPrimary
                                             } else {
