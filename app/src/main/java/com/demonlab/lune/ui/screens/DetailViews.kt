@@ -982,9 +982,11 @@ fun AlbumDetailView(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                         )
 
+                        // An artist or genre page is not an album, and its year
+                        // would be the oldest track on the page.
                         val albumSubtitle = listOfNotNull(
                             album.artist.takeIf { it.isNotBlank() },
-                            album.year?.toString()
+                            album.year?.takeIf { !isArtistView }?.toString()
                         ).joinToString("  •  ")
                         if (albumSubtitle.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(4.dp))
