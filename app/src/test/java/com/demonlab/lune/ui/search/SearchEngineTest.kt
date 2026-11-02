@@ -204,6 +204,35 @@ class SearchEngineTest {
     }
 
     @Test
+    fun `song titles rank exact, then starts with, then contains`() {
+        val exact = song("Grace", "A", "One")
+        val starts = song("Graceful Exit", "B", "Two")
+        val contains = song("Amazing Grace", "C", "Three")
+
+        val results = search("grace", listOf(contains, starts, exact))
+
+        assertEquals(listOf(exact.id, starts.id, contains.id), results.songs.map { it.id })
+    }
+
+    @Test
+    fun `playlists matching by name rank before song-only matches`() {
+        val songOnly = song("Focus", "A", "One")
+        val focus = Playlist(id = 1L, name = "Focus")
+        val focusMix = Playlist(id = 2L, name = "Focus Mix")
+        val chill = Playlist(id = 3L, name = "Chill")
+        val mappings = listOf(PlaylistSong(playlistId = 3L, songId = songOnly.id))
+
+        val results = search(
+            "focus",
+            listOf(songOnly),
+            playlists = listOf(chill, focusMix, focus),
+            mappings = mappings
+        )
+
+        assertEquals(listOf("Focus", "Focus Mix", "Chill"), results.playlistResults.keys.map { it.name })
+    }
+
+    @Test
     fun `ten thousand songs stay fast and correct`() {
         val songs = (1..10_000).map { index ->
             song(

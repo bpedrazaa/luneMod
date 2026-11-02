@@ -745,10 +745,12 @@ internal fun computeSearchResults(
     if (searchTerms.isEmpty()) return emptySearchResults()
 
     // Songs match their own title only. Artist and album have their own groups.
-    val matchedSongs = allSongs.filter { song ->
-        val normalizedTitle = song.title.normalizeForSearch()
-        searchTerms.all { term -> normalizedTitle.contains(term) }
-    }
+    val matchedSongs = allSongs
+        .filter { song ->
+            val normalizedTitle = song.title.normalizeForSearch()
+            searchTerms.all { term -> normalizedTitle.contains(term) }
+        }
+        .sortedWith(compareBy({ relevanceRank(it.title, query) }, { it.title.normalizeForSearch() }))
     val matchedSongIds = matchedSongs.mapTo(HashSet()) { it.id }
 
     // Album artists match their own name. A track title or a featured artist
@@ -789,8 +791,9 @@ internal fun computeSearchResults(
 
     // One id lookup per mapping instead of a linear scan of the whole library.
     val songsById = allSongs.associateBy { it.id }
-    val playlistResults = mutableMapOf<Playlist, List<Song>>()
-    for (playlist in allPlaylists) {
+    // A playlist that matches by name ranks by its name; one that only surfaced
+    // through matched songs ranks after those, keeping insertion order stable.
+    val playlistMatches = allPlaylists.mapNotNull { playlist ->
         val nameMatches = searchTerms.all { term -> playlist.name.normalizeForSearch().contains(term) }
         val playlistSongs = playlistMappings.asSequence()
             .filter { it.playlistId == playlist.id }
@@ -798,9 +801,13 @@ internal fun computeSearchResults(
             .toList()
         val matchingSongs = playlistSongs.filter { it.id in matchedSongIds }
         if (nameMatches || matchingSongs.isNotEmpty()) {
-            playlistResults[playlist] = matchingSongs
+            Triple(playlist, matchingSongs, if (nameMatches) relevanceRank(playlist.name, query) else Int.MAX_VALUE)
+        } else {
+            null
         }
-    }
+    }.sortedWith(compareBy({ it.third }, { it.first.name.normalizeForSearch() }))
+    val playlistResults = LinkedHashMap<Playlist, List<Song>>(playlistMatches.size)
+    playlistMatches.forEach { playlistResults[it.first] = it.second }
 
     return SearchResults(
         songs = matchedSongs,
