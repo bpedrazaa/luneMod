@@ -343,6 +343,7 @@ class Lune : AppCompatActivity() {
             }
             
             val currentSong = playbackManager.currentSong
+            val playingSnapshot = currentSong
             val isPlaying = playbackManager.isPlaying
             var isPlayerExpanded by rememberSaveable { mutableStateOf(pendingExpandPlayer.value) }
             var playbackProgress by remember { mutableStateOf(playbackManager.getProgress()) }
@@ -368,6 +369,14 @@ class Lune : AppCompatActivity() {
                 if (currentSong == null && isPlayerExpanded) {
                     isPlayerExpanded = false
                 }
+            }
+
+            // Tag data arrives in batches, so the playing song object goes stale
+            // until the library hands over a fresher copy.
+            LaunchedEffect(playingSnapshot, musicViewModel.allSongs) {
+                val playing = playingSnapshot ?: return@LaunchedEffect
+                val fresh = musicViewModel.allSongs.firstOrNull { it.id == playing.id } ?: return@LaunchedEffect
+                if (fresh != playing) playbackManager.refreshCurrentSong(fresh)
             }
 
             // Permissions logic lifted

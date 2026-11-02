@@ -823,6 +823,18 @@ class PlaybackManager private constructor(private val context: Context) {
         }
     }
 
+    /** Replace the playing song with a fresher copy from the library, keeping playback. */
+    fun refreshCurrentSong(song: Song) {
+        val playing = currentSong ?: return
+        if (playing.id != song.id) return
+        // Lyrics are loaded separately; do not drop them on the library's copy.
+        if (playing.lyrics != null && song.lyrics == null) {
+            currentSong = song.copy(lyrics = playing.lyrics)
+        } else {
+            currentSong = song
+        }
+    }
+
     fun updateLyrics(lyrics: String?) {
         Log.i("PlaybackManager", "Updating lyrics. Length: ${lyrics?.length ?: 0}")
         currentLyrics = lyrics
