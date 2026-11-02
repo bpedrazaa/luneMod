@@ -301,6 +301,7 @@ fun AudioQualityBadges(
     modifier: Modifier = Modifier,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     enableScroll: Boolean = false,
+    showBitrateBadge: Boolean = false,
     customActiveColor: Color? = null
 ) {
     val format = song.format.uppercase().ifEmpty {
@@ -357,10 +358,11 @@ fun AudioQualityBadges(
     val bitDepthStr = effectiveBitDepth?.let { if (it > 0) "${it}-bit" else null }
     val bitrateStr = effectiveBitrate?.let { if (it > 0) "${it / 1000} kbps" else null }
 
+    // A bitrate badge of its own, so a file with a sample rate still shows both.
     val specsText = when {
         bitDepthStr != null && sampleRateStr != null -> "$bitDepthStr / $sampleRateStr"
         sampleRateStr != null -> sampleRateStr
-        bitrateStr != null -> bitrateStr
+        !showBitrateBadge && bitrateStr != null -> bitrateStr
         else -> null
     }
 
@@ -420,6 +422,21 @@ fun AudioQualityBadges(
                 )
             }
         }
+
+        if (showBitrateBadge && bitrateStr != null) {
+            Surface(
+                shape = RoundedCornerShape(percent = 50),
+                color = badgeBg
+            ) {
+                Text(
+                    text = bitrateStr,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (useBlurControls) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                )
+            }
+        }
     }
 
     if (enableScroll) {
@@ -451,6 +468,122 @@ fun AudioQualityBadges(
     }
 }
 
+/**
+ * One header line. When the content is wider than the header it glides on its own
+ * cycle, and it holds still while a finger is down so a tap lands on what is seen.
+ */
+@Composable
+private fun ScrollingHeaderLine(
+    spacingPx: Float,
+    speedPxPerSec: Float,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    var containerWidth by remember { mutableIntStateOf(0) }
+    var contentWidth by remember { mutableIntStateOf(0) }
+    var offset by remember { mutableFloatStateOf(0f) }
+    var interacting by remember { mutableStateOf(false) }
+
+    val overflows = containerWidth > 0 && contentWidth > containerWidth
+    val cycle = if (overflows) contentWidth + spacingPx else 0f
+
+    LaunchedEffect(overflows, interacting) {
+        if (interacting || !overflows) return@LaunchedEffect
+        delay(1500L)
+        var lastFrameNanos = withFrameNanos { it }
+        while (isActive && !interacting && overflows) {
+            withFrameNanos { frameNanos ->
+                val dtSec = (frameNanos - lastFrameNanos) / 1_000_000_000f
+                lastFrameNanos = frameNanos
+                offset += speedPxPerSec * dtSec
+            }
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clipToBounds()
+            .onSizeChanged { containerWidth = it.width }
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val downEvent = awaitPointerEvent(PointerEventPass.Initial)
+                        val downChange = downEvent.changes.firstOrNull { it.pressed } ?: continue
+                        val downId = downChange.id
+                        interacting = true
+
+                        var isDragging = false
+                        var totalDx = 0f
+                        val touchSlop = viewConfiguration.touchSlop
+
+                        try {
+                            while (true) {
+                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                                val change = event.changes.firstOrNull { it.id == downId } ?: break
+                                if (!change.pressed) break
+
+                                val dx = change.position.x - change.previousPosition.x
+                                val dy = change.position.y - change.previousPosition.y
+
+                                if (!isDragging) {
+                                    totalDx += dx
+                                    if (abs(totalDx) > touchSlop) {
+                                        if (abs(totalDx) > abs(dy)) {
+                                            isDragging = true
+                                            change.consume()
+                                            offset = (offset - dx).coerceAtLeast(0f)
+                                        } else {
+                                            break
+                                        }
+                                    }
+                                } else {
+                                    change.consume()
+                                    offset = (offset - dx).coerceAtLeast(0f)
+                                }
+                            }
+                        } finally {
+                            interacting = false
+                        }
+                    }
+                }
+            }
+    ) {
+        val measureWidth = Modifier.onSizeChanged { contentWidth = it.width }
+        if (!overflows) {
+            Box(
+                modifier = Modifier.layout { measurable, constraints ->
+                    val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity))
+                    val layoutWidth = if (constraints.hasBoundedWidth) constraints.maxWidth else placeable.width
+                    layout(layoutWidth, placeable.height) { placeable.placeRelative(0, 0) }
+                }
+            ) {
+                Box(measureWidth) { content() }
+            }
+        } else {
+            val offsetInCycle = if (cycle > 0f) ((offset % cycle) + cycle) % cycle else 0f
+            Box(
+                modifier = Modifier.layout { measurable, constraints ->
+                    val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity))
+                    val layoutWidth = if (constraints.hasBoundedWidth) constraints.maxWidth else placeable.width
+                    layout(layoutWidth, placeable.height) { placeable.placeRelative((-offsetInCycle).roundToInt(), 0) }
+                }
+            ) {
+                Box(measureWidth) { content() }
+            }
+            Box(
+                modifier = Modifier.layout { measurable, constraints ->
+                    val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity))
+                    val layoutWidth = if (constraints.hasBoundedWidth) constraints.maxWidth else placeable.width
+                    layout(layoutWidth, placeable.height) { placeable.placeRelative((-offsetInCycle + cycle).roundToInt(), 0) }
+                }
+            ) {
+                content()
+            }
+        }
+    }
+}
+
 @Composable
 fun UnifiedMarqueeHeader(
     song: Song,
@@ -470,134 +603,152 @@ fun UnifiedMarqueeHeader(
     customActiveColor: Color? = null
 ) {
     key(song.id) {
-        var marqueeOffset by remember(song.id) { mutableFloatStateOf(0f) }
-        var isUserInteracting by remember(song.id) { mutableStateOf(false) }
-        var containerWidth by remember { mutableIntStateOf(0) }
-        var titleWidth by remember(song.id) { mutableIntStateOf(0) }
-        var artistRowWidth by remember(song.id) { mutableIntStateOf(0) }
-
         val density = LocalDensity.current
         val speedPxPerSec = with(density) { 28.dp.toPx() }
         val spacingPx = with(density) { 40.dp.toPx() }
 
-        val isTitleLong = containerWidth > 0 && titleWidth > containerWidth
-        val isArtistLong = containerWidth > 0 && artistRowWidth > containerWidth
-        val shouldScroll = isTitleLong || isArtistLong
-
-        val cycle = when {
-            isTitleLong && isArtistLong -> maxOf(titleWidth, artistRowWidth) + spacingPx
-            isTitleLong -> titleWidth + spacingPx
-            isArtistLong -> artistRowWidth + spacingPx
-            else -> 0f
+        val titleStyle = if (isCompact) {
+            MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+        } else {
+            MaterialTheme.typography.headlineSmall
         }
-
-        LaunchedEffect(song.id) {
-            marqueeOffset = 0f
-            isUserInteracting = false
+        val chipLabelStyle = if (isCompact) {
+            MaterialTheme.typography.labelSmall
+        } else {
+            MaterialTheme.typography.labelMedium
         }
+        val chipPaddingV = if (isCompact) 2.dp else 4.dp
+        // One rhythm: the title and the audio row are set apart, the identity
+        // chips sit closer together.
+        val titleGap = if (isCompact) 2.dp else 8.dp
+        val chipGap = if (isCompact) 2.dp else 6.dp
+        val featureGap = if (isCompact) 2.dp else 4.dp
+        val infoGap = if (isCompact) 2.dp else 10.dp
 
-        LaunchedEffect(song.id, shouldScroll, isUserInteracting) {
-            if (isUserInteracting || !shouldScroll) return@LaunchedEffect
-            delay(1500L)
-            var lastFrameNanos = withFrameNanos { it }
-            while (isActive && !isUserInteracting && shouldScroll) {
-                withFrameNanos { frameNanos ->
-                    val dtSec = (frameNanos - lastFrameNanos) / 1_000_000_000f
-                    lastFrameNanos = frameNanos
-                    marqueeOffset += speedPxPerSec * dtSec
+        val albumChip: @Composable () -> Unit = {
+            Surface(
+                color = if (useBlurControls) blurContainerColor else if (isAmoled) Color(0xFF222222) else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f),
+                shape = RoundedCornerShape(percent = 50),
+                modifier = Modifier
+                    .bounceClick(0.95f)
+                    .clickable(
+                        onClickLabel = stringResource(R.string.mod_open_album)
+                    ) { onAlbumClick?.invoke(song.album, song.displayAlbumArtist) }
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.padding(
+                        horizontal = if (isCompact) 8.dp else 12.dp,
+                        vertical = chipPaddingV
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Album,
+                        contentDescription = null,
+                        tint = if (useBlurControls) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f),
+                        modifier = Modifier.size(if (isCompact) 12.dp else 14.dp)
+                    )
+                    Text(
+                        text = song.album,
+                        style = chipLabelStyle,
+                        color = if (useBlurControls) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false,
+                        textAlign = TextAlign.Start
+                    )
                 }
             }
         }
 
-        val titleContent: @Composable (Boolean) -> Unit = { isMeasuring ->
-            Text(
-                text = song.title,
-                style = if (isCompact) MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold) else MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                softWrap = false,
-                textAlign = TextAlign.Start,
-                color = if (useBlurControls) Color.White else MaterialTheme.colorScheme.onSurface,
-                modifier = if (isMeasuring) {
-                    Modifier.onSizeChanged { titleWidth = it.width }
-                } else {
-                    Modifier
-                }
-            )
+        val artistChip: @Composable () -> Unit = {
+            Surface(
+                color = if (useBlurControls) blurContainerColor else if (isAmoled) Color(0xFF222222) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(percent = 50),
+                modifier = Modifier
+                    .bounceClick(0.95f)
+                    .clickable(
+                        onClickLabel = stringResource(R.string.mod_open_album_artist)
+                    ) { onAlbumArtistClick?.invoke(song.displayAlbumArtist) }
+            ) {
+                Text(
+                    text = song.displayAlbumArtist,
+                    style = chipLabelStyle,
+                    color = if (useBlurControls) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    softWrap = false,
+                    textAlign = TextAlign.Start,
+                    modifier = Modifier.padding(
+                        horizontal = if (isCompact) 8.dp else 12.dp,
+                        vertical = chipPaddingV
+                    )
+                )
+            }
         }
 
-        val artistRowContent: @Composable (Boolean) -> Unit = { isMeasuring ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(if (isCompact) 4.dp else 6.dp),
-                modifier = if (isMeasuring) {
-                    Modifier.onSizeChanged { artistRowWidth = it.width }
-                } else {
-                    Modifier
-                }
-            ) {
-                Surface(
-                    color = if (useBlurControls) blurContainerColor else if (isAmoled) Color(0xFF222222) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(percent = 50),
-                    modifier = Modifier
-                        .bounceClick(0.95f)
-                        .clickable(
-                            onClickLabel = stringResource(R.string.mod_open_album_artist)
-                        ) { onAlbumArtistClick?.invoke(song.displayAlbumArtist) }
-                ) {
-                    Text(
-                        text = song.displayAlbumArtist,
-                        style = if (isCompact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
-                        color = if (useBlurControls) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        softWrap = false,
-                        textAlign = TextAlign.Start,
-                        modifier = Modifier.padding(
-                            horizontal = if (isCompact) 8.dp else 12.dp,
-                            vertical = if (isCompact) 2.dp else 4.dp
-                        )
-                    )
-                }
+        // The track artist plus its guests, only when it says more than the chip.
+        val featuredLine = song.artist.trim().takeIf {
+            it.isNotBlank() && !it.equals(song.displayAlbumArtist.trim(), ignoreCase = true)
+        }
 
-                if (song.album.isNotBlank()) {
+        Column(
+            modifier = modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.Start
+        ) {
+            ScrollingHeaderLine(spacingPx = spacingPx, speedPxPerSec = speedPxPerSec) {
+                Text(
+                    text = song.title,
+                    style = titleStyle,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    softWrap = false,
+                    textAlign = TextAlign.Start,
+                    color = if (useBlurControls) Color.White else MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Spacer(modifier = Modifier.height(titleGap))
+
+            if (song.album.isNotBlank()) {
+                ScrollingHeaderLine(spacingPx = spacingPx, speedPxPerSec = speedPxPerSec) {
+                    albumChip()
+                }
+                Spacer(modifier = Modifier.height(chipGap))
+            }
+
+            if (song.displayAlbumArtist.isNotBlank()) {
+                ScrollingHeaderLine(spacingPx = spacingPx, speedPxPerSec = speedPxPerSec) {
+                    artistChip()
+                }
+            }
+
+            if (!isCompact && featuredLine != null) {
+                Spacer(modifier = Modifier.height(featureGap))
+                ScrollingHeaderLine(spacingPx = spacingPx, speedPxPerSec = speedPxPerSec) {
+                    // Quieter than the artist chip so the three pills stay distinct.
                     Surface(
-                        color = if (useBlurControls) blurContainerColor else if (isAmoled) Color(0xFF222222) else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f),
-                        shape = RoundedCornerShape(percent = 50),
-                        modifier = Modifier
-                            .bounceClick(0.95f)
-                            .clickable(
-                                onClickLabel = stringResource(R.string.mod_open_album)
-                            ) { onAlbumClick?.invoke(song.album, song.displayAlbumArtist) }
+                        color = if (useBlurControls) Color.White.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                        shape = RoundedCornerShape(percent = 50)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier.padding(
-                                horizontal = if (isCompact) 8.dp else 10.dp,
-                                vertical = if (isCompact) 2.dp else 4.dp
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Album,
-                                contentDescription = null,
-                                tint = if (useBlurControls) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f),
-                                modifier = Modifier.size(if (isCompact) 12.dp else 14.dp)
-                            )
-                            Text(
-                                text = song.album,
-                                style = if (isCompact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
-                                color = if (useBlurControls) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                softWrap = false,
-                                textAlign = TextAlign.Start
-                            )
-                        }
+                        Text(
+                            text = featuredLine,
+                            style = chipLabelStyle,
+                            color = if (useBlurControls) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            softWrap = false,
+                            textAlign = TextAlign.Start,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = chipPaddingV)
+                        )
                     }
                 }
+            }
 
-                if (settingsManager.isBitrateOnPlayer) {
+            if (!isCompact && settingsManager.isBitrateOnPlayer) {
+                Spacer(modifier = Modifier.height(infoGap))
+                ScrollingHeaderLine(spacingPx = spacingPx, speedPxPerSec = speedPxPerSec) {
                     AudioQualityBadges(
                         song = song,
                         runtimeSampleRate = runtimeSampleRate,
@@ -608,178 +759,10 @@ fun UnifiedMarqueeHeader(
                         onClick = onAudioBadgesClick,
                         horizontalAlignment = Alignment.Start,
                         enableScroll = false,
+                        showBitrateBadge = true,
                         customActiveColor = customActiveColor
                     )
                 }
-            }
-        }
-
-        Column(
-            modifier = modifier
-                .fillMaxWidth()
-                .clipToBounds()
-                .onSizeChanged { containerWidth = it.width }
-                .pointerInput(song.id) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val downEvent = awaitPointerEvent(PointerEventPass.Initial)
-                            val downChange = downEvent.changes.firstOrNull { it.pressed } ?: continue
-                            val downId = downChange.id
-                            isUserInteracting = true
-
-                            var isDragging = false
-                            var totalDx = 0f
-                            val touchSlop = viewConfiguration.touchSlop
-
-                            try {
-                                while (true) {
-                                    val event = awaitPointerEvent(PointerEventPass.Initial)
-                                    val change = event.changes.firstOrNull { it.id == downId }
-                                    if (change == null || !change.pressed) {
-                                        break
-                                    }
-
-                                    val dx = change.position.x - change.previousPosition.x
-                                    val dy = change.position.y - change.previousPosition.y
-
-                                    if (!isDragging) {
-                                        totalDx += dx
-                                        if (abs(totalDx) > touchSlop) {
-                                            if (abs(totalDx) > abs(dy)) {
-                                                isDragging = true
-                                                change.consume()
-                                                marqueeOffset = (marqueeOffset - dx).coerceAtLeast(0f)
-                                            } else {
-                                                break
-                                            }
-                                        }
-                                    } else {
-                                        change.consume()
-                                        marqueeOffset = (marqueeOffset - dx).coerceAtLeast(0f)
-                                    }
-                                }
-                            } finally {
-                                isUserInteracting = false
-                            }
-                        }
-                    }
-                },
-            horizontalAlignment = Alignment.Start
-        ) {
-            // Line 1: Song Title
-            if (!isTitleLong) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clipToBounds()
-                        .layout { measurable, constraints ->
-                            val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity))
-                            val layoutWidth = if (constraints.hasBoundedWidth) constraints.maxWidth else placeable.width
-                            layout(layoutWidth, placeable.height) {
-                                placeable.placeRelative(0, 0)
-                            }
-                        }
-                ) {
-                    titleContent(true)
-                }
-            } else {
-                val offsetInCycle = if (cycle > 0f) ((marqueeOffset % cycle) + cycle) % cycle else 0f
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clipToBounds()
-                ) {
-                    // Copia 1
-                    Box(
-                        modifier = Modifier.layout { measurable, constraints ->
-                            val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity))
-                            val layoutWidth = if (constraints.hasBoundedWidth) constraints.maxWidth else placeable.width
-                            layout(layoutWidth, placeable.height) {
-                                placeable.placeRelative((-offsetInCycle).roundToInt(), 0)
-                            }
-                        }
-                    ) {
-                        titleContent(true)
-                    }
-
-                    // Copia 2
-                    Box(
-                        modifier = Modifier.layout { measurable, constraints ->
-                            val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity))
-                            val layoutWidth = if (constraints.hasBoundedWidth) constraints.maxWidth else placeable.width
-                            layout(layoutWidth, placeable.height) {
-                                placeable.placeRelative((-offsetInCycle + cycle).roundToInt(), 0)
-                            }
-                        }
-                    ) {
-                        titleContent(false)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(if (isCompact) 2.dp else 6.dp))
-
-            // Line 2: Artist & Audio Badges Row
-            if (!isArtistLong) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clipToBounds()
-                        .layout { measurable, constraints ->
-                            val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity))
-                            val layoutWidth = if (constraints.hasBoundedWidth) constraints.maxWidth else placeable.width
-                            layout(layoutWidth, placeable.height) {
-                                placeable.placeRelative(0, 0)
-                            }
-                        }
-                ) {
-                    artistRowContent(true)
-                }
-            } else {
-                val offsetInCycle = if (cycle > 0f) ((marqueeOffset % cycle) + cycle) % cycle else 0f
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clipToBounds()
-                ) {
-                    // Copia 1
-                    Box(
-                        modifier = Modifier.layout { measurable, constraints ->
-                            val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity))
-                            val layoutWidth = if (constraints.hasBoundedWidth) constraints.maxWidth else placeable.width
-                            layout(layoutWidth, placeable.height) {
-                                placeable.placeRelative((-offsetInCycle).roundToInt(), 0)
-                            }
-                        }
-                    ) {
-                        artistRowContent(true)
-                    }
-
-                    // Copia 2
-                    Box(
-                        modifier = Modifier.layout { measurable, constraints ->
-                            val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity))
-                            val layoutWidth = if (constraints.hasBoundedWidth) constraints.maxWidth else placeable.width
-                            layout(layoutWidth, placeable.height) {
-                                placeable.placeRelative((-offsetInCycle + cycle).roundToInt(), 0)
-                            }
-                        }
-                    ) {
-                        artistRowContent(false)
-                    }
-                }
-            }
-
-            // Line 3: collaborators, only when the album artist differs.
-            if (song.artist.isNotBlank() && !song.artist.trim().equals(song.displayAlbumArtist.trim(), ignoreCase = true)) {
-                Text(
-                    text = song.artist,
-                    style = if (isCompact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
-                    color = if (useBlurControls) Color.White.copy(alpha = 0.62f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 2.dp, top = 1.dp)
-                )
             }
         }
     }
