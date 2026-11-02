@@ -178,7 +178,10 @@ fun LyricsScreen(onBack: () -> Unit, isDarkTheme: Boolean = false) {
 
     val isBlurActive = lyricsSettings.isBlurEnabled && if (isDarkTheme) lyricsSettings.isBlurDarkMode else lyricsSettings.isBlurLightMode
     val lyricsTextColor = if (isBlurActive) (if (isDarkTheme) Color.White else Color(0xFF1C1C1E)) else MaterialTheme.colorScheme.onSurface
-    val lyricsMutedColor = if (isBlurActive) (if (isDarkTheme) Color.White.copy(alpha = 0.3f) else Color(0xFF1C1C1E).copy(alpha = 0.35f)) else MaterialTheme.colorScheme.onSurfaceVariant
+    // Three tiers: inactive lines, the active line's unsung words just below the
+    // sung ones, and the sung words at the full text colour.
+    val lyricsMutedColor = if (isBlurActive) (if (isDarkTheme) Color.White.copy(alpha = 0.7f) else Color(0xFF1C1C1E).copy(alpha = 0.7f)) else MaterialTheme.colorScheme.onSurfaceVariant
+    val lyricsActiveUnsungColor = if (isBlurActive) (if (isDarkTheme) Color.White.copy(alpha = 0.88f) else Color(0xFF1C1C1E).copy(alpha = 0.88f)) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
     val lyricsMuted2Color = if (isBlurActive) (if (isDarkTheme) Color.White.copy(alpha = 0.7f) else Color(0xFF1C1C1E).copy(alpha = 0.65f)) else MaterialTheme.colorScheme.onSurfaceVariant
     val lyricsMuted08Color = if (isBlurActive) (if (isDarkTheme) Color.White.copy(alpha = 0.8f) else Color(0xFF1C1C1E).copy(alpha = 0.8f)) else MaterialTheme.colorScheme.onSurface
 
@@ -697,7 +700,7 @@ fun LyricsScreen(onBack: () -> Unit, isDarkTheme: Boolean = false) {
                                     val isPassed = word.timeMs <= adjustedPositionMs
                                     withStyle(
                                         SpanStyle(
-                                            color = if (isPassed) lyricsTextColor else lyricsMuted2Color,
+                                            color = if (isPassed) lyricsTextColor else lyricsActiveUnsungColor,
                                             fontWeight = if (isPassed) FontWeight.Bold else FontWeight.Medium
                                         )
                                     ) {
