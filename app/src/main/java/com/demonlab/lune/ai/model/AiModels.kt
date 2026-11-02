@@ -128,6 +128,9 @@ data class SongInteraction(
         return (targetPlays.toFloat() / totalTimePlays.toFloat())
     }
 
+    // Both sides lock the same object: recordInteraction mutates this map from
+    // the UI while a mix build sums it on the default dispatcher.
+    @Synchronized
     fun recordTransitionTo(nextSongId: Long) {
         val map = nextSongTransitions ?: mutableMapOf<String, Int>().also { nextSongTransitions = it }
         val key = nextSongId.toString()
@@ -135,6 +138,7 @@ data class SongInteraction(
         map[key] = count + 1
     }
 
+    @Synchronized
     fun getTransitionProbabilityTo(nextSongId: Long): Float {
         val map = nextSongTransitions ?: return 0f
         if (map.isEmpty()) return 0f
