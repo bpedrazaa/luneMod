@@ -286,8 +286,10 @@ class MusicProvider(private val context: Context) {
                 val override = overrides[id]
 
                 // Tags for formats MediaStore does not parse (WAV, DSD) or where it
-                // returned empty values. Skipped when the user edited the song.
-                if (cached != null && override == null) {
+                // returned empty values. An override only carries the favorite flag
+                // and a custom cover now, so it no longer suppresses the tag text;
+                // the override block below still wins for any field it sets.
+                if (cached != null) {
                     val forceTagValues = extension == "wav"
                     if (!cached.tagTitle.isNullOrBlank()) {
                         title = CharsetUtils.sanitizeText(cached.tagTitle)
