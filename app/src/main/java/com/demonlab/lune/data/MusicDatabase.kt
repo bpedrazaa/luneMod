@@ -32,6 +32,8 @@ data class FileTagCache(
     val tagGenre: String? = null,
     val tagTrack: Int? = null,
     val year: Int? = null,
+    /** Reader version the row was read with; a different value means read it again. */
+    @ColumnInfo(defaultValue = "0") val epoch: Int = 0,
     val updatedAt: Long = System.currentTimeMillis()
 )
 
@@ -177,13 +179,14 @@ interface PlaybackStatsDao {
 
 @Database(
     entities = [SongOverride::class, Playlist::class, PlaylistSong::class, PlaybackStats::class, FileTagCache::class],
-    version = 10,
+    version = 11,
     autoMigrations = [
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 6, to = 7),
         AutoMigration(from = 7, to = 8),
         AutoMigration(from = 8, to = 9),
-        AutoMigration(from = 9, to = 10)
+        AutoMigration(from = 9, to = 10),
+        AutoMigration(from = 10, to = 11)
     ],
     exportSchema = true
 )

@@ -91,6 +91,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private var syncJob: Job? = null
     private var enrichmentJob: Job? = null
     private var lastSyncAt = 0L
+    private var seenRevision = settingsManager.libraryRevision
 
     fun updateRandomResumeArtists(songs: List<Song>, force: Boolean = false) {
         if (force || randomResumeArtistNames.isEmpty()) {
@@ -134,8 +135,9 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
+            val rescanRan = settingsManager.libraryRevision != seenRevision
             val stale = System.currentTimeMillis() - lastSyncAt > SYNC_THROTTLE_MS
-            if (forceSync || scopeChanged || allSongs.isEmpty() || stale) {
+            if (forceSync || scopeChanged || rescanRan || allSongs.isEmpty() || stale) {
                 requestSync(scanForMissing = forceSync || scopeChanged)
             } else {
                 isLoading = false
@@ -171,7 +173,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private suspend fun applySync(sync: LibrarySync) {
+    private suspend fun applySync(sync: LibrarySync, syncOnly: Boolean = false) {
         if (manualRescan) {
             manualRescan = false
             if (sync.pendingTags.isEmpty()) libraryUpToDate = true
@@ -185,6 +187,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             // An empty selected folder is an answer, not a scan still pending, or
             // every resume would rescan it again.
             settingsManager.isLibraryScopePending = false
+            seenRevision = settingsManager.libraryRevision
             return
         }
 
@@ -194,33 +197,32 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         }
         withContext(Dispatchers.Default) { updateRandomResumeArtists(sync.songs) }
         lastSyncAt = System.currentTimeMillis()
+        seenRevision = settingsManager.libraryRevision
         settingsManager.isLibraryScopePending = false
 
-        startTagEnrichment(sync.pendingTags)
+        if (!syncOnly) startTagEnrichment(sync.pendingTags)
     }
 
     private fun startTagEnrichment(pending: List<PendingTag>) {
         if (pending.isEmpty()) return
-        enrichmentJob?.cancel()
+        // A pass already reads what is pending. Restarting it here would throw
+        // away the current batch and re-read rows that are already stamped.
+        if (enrichmentJob?.isActive == true) return
         enrichmentJob = viewModelScope.launch {
             tagScanProcessed = 0
             tagScanTotal = pending.size
             scanNotificationShown = false
             val app = getApplication<Application>()
             try {
-                musicProvider.enrichTags(pending) { batch ->
+                musicProvider.enrichTags(pending) { batch, attempted ->
                     applyTagBatch(batch)
-                    tagScanProcessed = (tagScanProcessed + batch.size).coerceAtMost(tagScanTotal)
+                    tagScanProcessed = (tagScanProcessed + attempted).coerceAtMost(tagScanTotal)
                     scanNotificationShown = true
                     ScanNotifier.update(app, tagScanProcessed, tagScanTotal)
                 }
-                // Only once every file has been read: until then the older rows
-                // stay in place and keep their album artists.
-                settingsManager.tagCacheVersion = MusicProvider.CACHE_VERSION
-                // One more pass so tag-derived titles/artists (WAV, DSD) land too.
-                lastSyncAt = 0L
+                // One more pass so tag-derived titles, artists and genres land too.
                 val sync = withContext(Dispatchers.IO) { musicProvider.syncLibrary(false) }
-                applySync(sync)
+                applySync(sync, syncOnly = true)
                 libraryReadyCount = allSongs.size
                 if (scanNotificationShown) {
                     ScanNotifier.finish(app, allSongs.size)

@@ -153,13 +153,12 @@ class SettingsManager(context: Context) {
         set(value) = prefs.edit().putInt("library_cache_hash", value).apply()
 
     /**
-     * Tag-cache epoch. Rows written under an older epoch are re-read, but kept
-     * meanwhile: dropping them would blank album artists and split albums
-     * until the rescan reaches them.
+     * Bumped by a rescan outside the view model, so the library screen knows to
+     * reload instead of waiting for its sync throttle.
      */
-    var tagCacheVersion: Int
-        get() = prefs.getInt("tag_cache_version", 0)
-        set(value) = prefs.edit().putInt("tag_cache_version", value).apply()
+    var libraryRevision: Int
+        get() = prefs.getInt("library_revision", 0)
+        set(value) = prefs.edit().putInt("library_revision", value).apply()
 
     var isSortAscending: Boolean
         get() = prefs.getBoolean("is_sort_ascending", true)

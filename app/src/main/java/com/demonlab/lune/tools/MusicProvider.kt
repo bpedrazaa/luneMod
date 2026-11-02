@@ -59,6 +59,10 @@ class MusicProvider(private val context: Context) {
     companion object {
         // Bump when the cached Song shape changes; the next sync rebuilds it.
         const val CACHE_VERSION = 6
+        // Bump when the tag reader's output changes. Rows carry the epoch they
+        // were read with, so a bump reads every row once more without losing a
+        // partial pass.
+        const val TAG_CACHE_VERSION = 7
         val AUDIO_EXTENSIONS = setOf(
             "mp3", "flac", "wav", "aac", "m4a", "ogg", "opus", "wma", "alac", "dsf", "dff", "aiff", "ape"
         )
@@ -193,10 +197,6 @@ class MusicProvider(private val context: Context) {
         val selection = "(${MediaStore.Audio.Media.IS_MUSIC} != 0 OR (${MediaStore.Audio.Media.IS_RINGTONE} == 0 AND ${MediaStore.Audio.Media.IS_NOTIFICATION} == 0 AND ${MediaStore.Audio.Media.IS_ALARM} == 0))"
         val sortOrder = "${MediaStore.Audio.Media.TITLE} ASC"
 
-        // A version bump leaves old rows in place: they still carry the album
-        // artist, so albums do not split while the files are read again.
-        val tagsStale = settingsManager.tagCacheVersion != CACHE_VERSION
-
         val overrides = database.songOverrideDao().getAllOverrides().associateBy { it.songId }
         val tagCache = database.fileTagDao().getAll().associateBy { it.path }
 
@@ -247,9 +247,9 @@ class MusicProvider(private val context: Context) {
                 val cached = if (exists) {
                     tagCache[data]?.takeIf { it.fileSize == fileSize && it.lastModified == lastModified }
                 } else null
-                // An epoch bump reads every row once more; the epoch only moves
-                // forward after the pass completes, so it does not repeat.
-                if (exists && (cached == null || tagsStale)) {
+                // A row read by an older reader is pending; rows already at the
+                // current epoch keep their place, so an interrupted pass resumes.
+                if (exists && (cached == null || cached.epoch != TAG_CACHE_VERSION)) {
                     pendingTags.add(PendingTag(data, fileSize, lastModified, extension))
                 }
 
@@ -495,13 +495,18 @@ class MusicProvider(private val context: Context) {
             var tagsRead = 0
             if (sync.pendingTags.isNotEmpty()) {
                 val total = sync.pendingTags.size
-                enrichTags(sync.pendingTags) { batch ->
-                    tagsRead += batch.size
+                enrichTags(sync.pendingTags) { _, attempted ->
+                    tagsRead += attempted
                     onProgress(tagsRead, total)
                 }
-                settingsManager.tagCacheVersion = CACHE_VERSION
             }
-            RescanResult(sync.songs.size, tagsRead)
+            // Rebuild from the rows just written, so the caller and the next
+            // screen see the new text instead of the pre-read snapshot.
+            val refreshed = if (tagsRead > 0) syncLibrary(scanForMissing = false) else sync
+            // The library screen watches this to reload without waiting for its
+            // own throttle.
+            settingsManager.libraryRevision = settingsManager.libraryRevision + 1
+            RescanResult(refreshed.songs.size, tagsRead)
         }
 
     /**
@@ -511,7 +516,7 @@ class MusicProvider(private val context: Context) {
     suspend fun enrichTags(
         pending: List<PendingTag>,
         batchSize: Int = 500,
-        onBatch: suspend (List<FileTagCache>) -> Unit
+        onBatch: suspend (entries: List<FileTagCache>, attempted: Int) -> Unit
     ) {
         if (pending.isEmpty()) return
         val dao = database.fileTagDao()
@@ -521,6 +526,9 @@ class MusicProvider(private val context: Context) {
                     val file = File(pendingTag.path)
                     if (!file.exists()) return@mapNotNull null
                     val tags = AudioTagReader.read(file, pendingTag.extension)
+                    // A read that produced nothing must not replace a good row.
+                    // Skipping leaves it on its old epoch, so it is tried again.
+                    if (tags.isBlank()) return@mapNotNull null
                     FileTagCache(
                         path = pendingTag.path,
                         fileSize = pendingTag.fileSize,
@@ -534,14 +542,15 @@ class MusicProvider(private val context: Context) {
                         tagAlbum = tags.album,
                         tagGenre = tags.genre,
                         tagTrack = tags.trackNumber,
-                        year = tags.year
+                        year = tags.year,
+                        epoch = TAG_CACHE_VERSION
                     )
                 }
             }
             if (entries.isNotEmpty()) {
                 withContext(Dispatchers.IO) { dao.upsertAll(entries) }
-                onBatch(entries)
             }
+            onBatch(entries, chunk.size)
         }
     }
 

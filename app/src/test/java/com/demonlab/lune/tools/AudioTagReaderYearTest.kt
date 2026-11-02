@@ -1,7 +1,9 @@
 package com.demonlab.lune.tools
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -36,5 +38,13 @@ class AudioTagReaderYearTest {
         assertNull(AudioTagReader.parseYear("999"))
         assertNull(AudioTagReader.parseYear("3000"))
         assertNull(AudioTagReader.parseYear("unknown"))
+    }
+    /** An empty read must not replace a cached row, so it has to report itself. */
+    @Test
+    fun testEmptyReadIsBlank() {
+        assertTrue(AudioTagReader.Tags().isBlank())
+        assertFalse(AudioTagReader.Tags(title = "A").isBlank())
+        assertFalse(AudioTagReader.Tags(albumArtist = "B").isBlank())
+        assertFalse(AudioTagReader.Tags(bitrate = 320000).isBlank())
     }
 }

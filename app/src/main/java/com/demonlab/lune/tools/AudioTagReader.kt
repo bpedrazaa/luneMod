@@ -25,7 +25,10 @@ object AudioTagReader {
         val genre: String? = null,
         val trackNumber: Int? = null,
         val year: Int? = null
-    )
+    ) {
+        /** Every field null means the read produced nothing usable. */
+        fun isBlank(): Boolean = this == Tags()
+    }
 
     fun read(file: File, extension: String): Tags {
         var albumArtist: String? = null
