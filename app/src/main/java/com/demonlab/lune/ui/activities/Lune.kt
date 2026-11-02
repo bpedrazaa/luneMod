@@ -593,9 +593,9 @@ class Lune : AppCompatActivity() {
 /** The selected folder as a readable label: "primary:Music/MyMusic" becomes "Music/MyMusic". */
 private fun scopedFolderLabel(treeUri: String?): String? {
     val raw = treeUri?.takeIf { it.isNotBlank() } ?: return null
+    // The segment is already decoded by Uri.
     val segment = runCatching { android.net.Uri.parse(raw).lastPathSegment }.getOrNull() ?: return null
-    val decoded = runCatching { android.net.Uri.decode(segment) }.getOrNull() ?: return null
-    return decoded.substringAfter(':', decoded).trim().ifBlank { null }
+    return segment.substringAfter(':', segment).trim().ifBlank { null }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

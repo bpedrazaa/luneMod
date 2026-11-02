@@ -233,7 +233,7 @@ class MusicProvider(private val context: Context) {
             while (cursor.moveToNext()) {
                 val data = cursor.getString(dataColumn) ?: continue
                 if (data.isBlank()) continue
-                if (scopePrefix != null && !data.startsWith(scopePrefix)) continue
+                if (scopeRoot != null && !LibraryScope.isInside(data, scopeRoot)) continue
 
                 val extension = data.substringAfterLast(".", "").lowercase()
                 if (extension !in AUDIO_EXTENSIONS) continue

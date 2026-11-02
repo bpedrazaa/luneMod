@@ -45,8 +45,10 @@ object LibraryScope {
      * can refuse a folder that cannot be mapped before it is saved.
      */
     fun resolvePath(uriString: String): String? {
+        // lastPathSegment is already decoded; decoding again would turn a
+        // literal percent escape in a folder name into a different path.
         val docId = runCatching { Uri.parse(uriString).lastPathSegment }.getOrNull() ?: return null
-        val (volume, relative) = pathFromDocId(Uri.decode(docId)) ?: return null
+        val (volume, relative) = pathFromDocId(docId) ?: return null
         val base = when {
             volume.equals("primary", ignoreCase = true) ->
                 Environment.getExternalStorageDirectory().absolutePath
