@@ -144,6 +144,9 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun refreshLibrary() {
+        // A rejected request must not leave the flag set: the next unrelated
+        // sync would consume it and report an up to date library.
+        if (syncJob?.isActive == true) return
         manualRescan = true
         requestSync(scanForMissing = true)
     }
@@ -163,6 +166,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                 e.printStackTrace()
             } finally {
                 isLoading = false
+                manualRescan = false
             }
         }
     }
