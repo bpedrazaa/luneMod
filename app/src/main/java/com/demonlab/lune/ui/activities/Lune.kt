@@ -1377,8 +1377,10 @@ fun MainScreen(
         ) { innerPadding ->
             Column(modifier = Modifier.padding(top = innerPadding.calculateTopPadding())) {
 
-                val folderLabel = remember(settingsManager.musicFolderUri) {
-                    scopedFolderLabel(settingsManager.musicFolderUri)
+                // Only claim a folder while the scan is actually limited to it.
+                val folderLabel = remember(settingsManager.musicFolderUri, settingsManager.showAllFoldersOnStart) {
+                    if (settingsManager.showAllFoldersOnStart) null
+                    else scopedFolderLabel(settingsManager.musicFolderUri)
                 }
                 val scanTotal = musicViewModel.tagScanTotal
                 val scanDone = musicViewModel.tagScanProcessed
