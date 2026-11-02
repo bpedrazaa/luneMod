@@ -823,21 +823,6 @@ class PlaybackManager private constructor(private val context: Context) {
         }
     }
 
-    /** Called after a metadata edit — updates currentSong and queue without changing isPlaying */
-    fun updateSongMetadata(song: Song) {
-        if (currentSong?.id == song.id) {
-            currentSong = song
-        }
-        
-        // Update the song in the active playlist (queue)
-        val newList = activePlaylist.map { 
-            if (it.id == song.id) song else it 
-        }
-        if (newList != activePlaylist) {
-            activePlaylist = newList
-        }
-    }
-
     fun updateLyrics(lyrics: String?) {
         Log.i("PlaybackManager", "Updating lyrics. Length: ${lyrics?.length ?: 0}")
         currentLyrics = lyrics
