@@ -2484,7 +2484,9 @@ fun MainScreen(
             }
             
             lastAlbum?.let { albumRender ->
-                val albumSongs = remember(albumRender.name, visibleSongs, selectedFolder, isAlbumView) {
+                // Keyed on the album id: two albums can share a title, and the
+                // artist or genre pages reuse this overlay.
+                val albumSongs = remember(albumRender.id, visibleSongs, selectedFolder, isAlbumView) {
                     when (selectedFolder) {
                         "GENRES" -> {
                             if (albumRender.name == "Desconocido") {
