@@ -6,18 +6,13 @@ import org.jaudiotagger.tag.FieldKey
 import java.io.File
 
 /**
- * Reads the tags MediaStore does not expose: album artist, plus the tags of
- * formats where MediaStore leaves title/artist/album empty (notably WAV/DSD).
+ * Reads a file's tags. The text comes from the tag library rather than the
+ * platform reader, which decodes some ID3 text with the wrong charset.
  *
  * Opening a file is the expensive part, so callers persist the result in
  * [com.demonlab.lune.data.FileTagCache] and only call this for new or changed files.
  */
 object AudioTagReader {
-
-    private val hiFiExtensions = setOf("flac", "wav", "alac", "dsf", "dff", "aiff", "ape")
-
-    // MediaMetadataRetriever does not expose these formats reliably.
-    private val retrieverWeakExtensions = setOf("wav", "dsf", "dff", "aiff", "ape")
 
     data class Tags(
         val albumArtist: String? = null,
@@ -43,12 +38,10 @@ object AudioTagReader {
         var genre: String? = null
         var trackNumber: Int? = null
         var year: Int? = null
-        var opened = false
 
         val retriever = MediaMetadataRetriever()
         try {
             retriever.setDataSource(file.absolutePath)
-            opened = true
 
             albumArtist = extract(retriever, MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
             title = extract(retriever, MediaMetadataRetriever.METADATA_KEY_TITLE)
@@ -78,26 +71,20 @@ object AudioTagReader {
             runCatching { retriever.release() }
         }
 
-        val weakFormat = extension in retrieverWeakExtensions
-        val missingHiFiProps = extension in hiFiExtensions && (sampleRate == null || bitDepth == null)
-        val missingBasicTags = title == null || artist == null || album == null
-        // The platform retriever returns no year for many MP3s even when the
-        // file carries one, so a missing year also earns the tag pass.
-        val needsFallback = !opened || weakFormat || missingHiFiProps || missingBasicTags || year == null
-
-        if (needsFallback) {
-            readWithJaudiotagger(file)?.let { fallback ->
-                albumArtist = albumArtist ?: fallback.albumArtist
-                bitrate = bitrate ?: fallback.bitrate
-                sampleRate = sampleRate ?: fallback.sampleRate
-                bitDepth = bitDepth ?: fallback.bitDepth
-                title = title ?: fallback.title
-                artist = artist ?: fallback.artist
-                album = album ?: fallback.album
-                genre = genre ?: fallback.genre
-                trackNumber = trackNumber ?: fallback.trackNumber
-                year = year ?: fallback.year
-            }
+        // The platform reader decodes some ID3 text with the wrong charset: a
+        // UTF-16 "Ænima" can come back as "Ćnima". The tag itself is read with
+        // the declared encoding here, so its text wins whenever it has any.
+        readWithJaudiotagger(file)?.let { tag ->
+            title = tag.title ?: title
+            artist = tag.artist ?: artist
+            album = tag.album ?: album
+            albumArtist = tag.albumArtist ?: albumArtist
+            genre = tag.genre ?: genre
+            bitrate = bitrate ?: tag.bitrate
+            sampleRate = sampleRate ?: tag.sampleRate
+            bitDepth = bitDepth ?: tag.bitDepth
+            trackNumber = trackNumber ?: tag.trackNumber
+            year = year ?: tag.year
         }
 
         if (year == null) {

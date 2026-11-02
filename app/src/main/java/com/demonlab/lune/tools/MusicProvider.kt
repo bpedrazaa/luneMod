@@ -58,7 +58,7 @@ data class LibrarySync(
 class MusicProvider(private val context: Context) {
     companion object {
         // Bump when the cached Song shape changes; the next sync rebuilds it.
-        const val CACHE_VERSION = 5
+        const val CACHE_VERSION = 6
         val AUDIO_EXTENSIONS = setOf(
             "mp3", "flac", "wav", "aac", "m4a", "ogg", "opus", "wma", "alac", "dsf", "dff", "aiff", "ape"
         )
@@ -247,9 +247,9 @@ class MusicProvider(private val context: Context) {
                 val cached = if (exists) {
                     tagCache[data]?.takeIf { it.fileSize == fileSize && it.lastModified == lastModified }
                 } else null
-                // Stale rows are re-read only while they still lack the year, so a
-                // finished rescan is not repeated on every launch.
-                if (exists && (cached == null || (tagsStale && cached.year == null))) {
+                // An epoch bump reads every row once more; the epoch only moves
+                // forward after the pass completes, so it does not repeat.
+                if (exists && (cached == null || tagsStale)) {
                     pendingTags.add(PendingTag(data, fileSize, lastModified, extension))
                 }
 
@@ -292,14 +292,12 @@ class MusicProvider(private val context: Context) {
                     if (!cached.tagTitle.isNullOrBlank()) {
                         title = CharsetUtils.sanitizeText(cached.tagTitle)
                     }
-                    if (!cached.tagArtist.isNullOrBlank() &&
-                        (forceTagValues || artist.isBlank() || artist.equals("<unknown>", ignoreCase = true))
-                    ) {
+                    // The file's own tags win: MediaStore keeps whatever its
+                    // scanner decoded, which can be a different charset.
+                    if (!cached.tagArtist.isNullOrBlank()) {
                         artist = CharsetUtils.sanitizeText(cached.tagArtist)
                     }
-                    if (!cached.tagAlbum.isNullOrBlank() &&
-                        (forceTagValues || album.isBlank() || album.equals("<unknown>", ignoreCase = true))
-                    ) {
+                    if (!cached.tagAlbum.isNullOrBlank()) {
                         album = CharsetUtils.sanitizeText(cached.tagAlbum)
                     }
                     if (!cached.tagGenre.isNullOrBlank() && (forceTagValues || genre.isNullOrBlank())) {
