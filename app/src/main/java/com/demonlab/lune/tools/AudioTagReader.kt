@@ -104,7 +104,7 @@ object AudioTagReader {
             val header = audioFile.audioHeader
             Tags(
                 albumArtist = tagField(tag, FieldKey.ALBUM_ARTIST),
-                bitrate = header?.bitRate?.toIntOrNull()?.takeIf { it > 0 },
+                bitrate = header?.bitRate?.toIntOrNull()?.takeIf { it > 0 }?.times(1000),
                 sampleRate = header?.sampleRateAsNumber?.takeIf { it > 0 },
                 bitDepth = header?.bitsPerSample?.takeIf { it > 0 },
                 title = tagField(tag, FieldKey.TITLE),

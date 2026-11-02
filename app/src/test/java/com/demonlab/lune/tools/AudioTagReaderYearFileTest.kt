@@ -3,6 +3,8 @@ package com.demonlab.lune.tools
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -57,6 +59,26 @@ class AudioTagReaderYearFileTest {
             val tags = AudioTagReader.read(tempFile, "wav")
 
             assertEquals(1975, tags.year)
+        } finally {
+            tempFile.delete()
+        }
+    }
+
+    /**
+     * The audio header reports kbps; everything that shows a bitrate divides by
+     * 1000, so the reader has to hand back bits per second.
+     */
+    @Test
+    fun testBitrateIsReportedInBitsPerSecond() {
+        val tempFile = File.createTempFile("tag_bitrate", ".wav")
+        try {
+            createDummyWavFile(tempFile)
+
+            val bitrate = AudioTagReader.read(tempFile, "wav").bitrate
+
+            // A 44.1 kHz 16-bit mono WAV is 705600 bps, so a kbps value fails this.
+            assertNotNull(bitrate)
+            assertTrue("bitrate was $bitrate", bitrate!! > 100_000)
         } finally {
             tempFile.delete()
         }
