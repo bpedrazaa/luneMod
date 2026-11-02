@@ -904,7 +904,7 @@ fun MainScreen(
                 )
             }
         val comparator: Comparator<Album> = when (albumSortOption) {
-            "ARTIST" -> if (albumCaseSensitive) compareBy { it.artist } else compareBy { it.artist.lowercase(java.util.Locale.getDefault()) }
+            "ARTIST" -> compareBy { artistSortName(it.artist, albumCaseSensitive) }
             "TRACK_COUNT" -> compareBy { it.songs.size }
             "DATE_ADDED" -> compareBy { it.songs.maxOfOrNull { s -> s.dateAdded } ?: 0L }
             "RELEASE_YEAR" -> compareBy { it.year ?: Int.MAX_VALUE }
@@ -934,7 +934,7 @@ fun MainScreen(
         val comparator: Comparator<Album> = when (artistSortOption) {
             "TRACK_COUNT" -> compareBy { it.songs.size }
             "ALBUM_COUNT" -> compareBy { it.songs.map { s -> s.album }.distinct().size }
-            else -> if (artistCaseSensitive) compareBy { it.name } else compareBy { it.name.lowercase(java.util.Locale.getDefault()) }
+            else -> compareBy { artistSortName(it.name, artistCaseSensitive) }
         }
         if (artistSortAscending) base.sortedWith(comparator) else base.sortedWith(comparator.reversed())
     }
@@ -959,7 +959,7 @@ fun MainScreen(
         val comparator: Comparator<Album> = when (albumArtistSortOption) {
             "TRACK_COUNT" -> compareBy { it.songs.size }
             "ALBUM_COUNT" -> compareBy { it.songs.map { s -> s.album }.distinct().size }
-            else -> if (albumArtistCaseSensitive) compareBy { it.name } else compareBy { it.name.lowercase(java.util.Locale.getDefault()) }
+            else -> compareBy { artistSortName(it.name, albumArtistCaseSensitive) }
         }
         if (albumArtistSortAscending) base.sortedWith(comparator) else base.sortedWith(comparator.reversed())
     }
@@ -1591,8 +1591,8 @@ fun MainScreen(
                                             category = "ALBUMS",
                                             itemLetter = {
                                                 when (albumSortOption) {
-                                                    "ARTIST" -> it.artist
-                                                    "ALPHABETICAL" -> it.name
+                                                    "ARTIST" -> artistLetter(it.artist)
+                                                    "ALPHABETICAL" -> firstLetter(it.name)
                                                     else -> ""
                                                 }
                                             }
@@ -1606,8 +1606,8 @@ fun MainScreen(
                                             activePlaylistId = currentSong?.let { Album.idFor(it.displayAlbumArtist, it.album) },
                                             itemLetter = {
                                                 when (albumSortOption) {
-                                                    "ARTIST" -> it.artist
-                                                    "ALPHABETICAL" -> it.name
+                                                    "ARTIST" -> artistLetter(it.artist)
+                                                    "ALPHABETICAL" -> firstLetter(it.name)
                                                     else -> ""
                                                 }
                                             }
@@ -1662,7 +1662,7 @@ fun MainScreen(
                                             customActiveColor = listActiveControlsColor,
                                             activePlaylistId = currentSong?.artist?.hashCode()?.toLong(),
                                             category = "ARTISTS",
-                                            itemLetter = { it.name }
+                                            itemLetter = { artistLetter(it.name) }
                                         )
                                     } else {
                                         AlbumStackedCarousel(
@@ -1671,7 +1671,7 @@ fun MainScreen(
                                             bottomPadding = bottomPadding,
                                             hasBlurBackground = hasBlurBackgroundMini && currentSong != null,
                                             activePlaylistId = currentSong?.artist?.hashCode()?.toLong(),
-                                            itemLetter = { it.name }
+                                            itemLetter = { artistLetter(it.name) }
                                         )
                                     }
                                 }
@@ -1725,7 +1725,7 @@ fun MainScreen(
                                             customActiveColor = listActiveControlsColor,
                                             activePlaylistId = currentSong?.displayAlbumArtist?.hashCode()?.toLong(),
                                             category = "ALBUM_ARTISTS",
-                                            itemLetter = { it.name }
+                                            itemLetter = { artistLetter(it.name) }
                                         )
                                     } else {
                                         AlbumStackedCarousel(
@@ -1734,7 +1734,7 @@ fun MainScreen(
                                             bottomPadding = bottomPadding,
                                             hasBlurBackground = hasBlurBackgroundMini && currentSong != null,
                                             activePlaylistId = currentSong?.displayAlbumArtist?.hashCode()?.toLong(),
-                                            itemLetter = { it.name }
+                                            itemLetter = { artistLetter(it.name) }
                                         )
                                     }
                                 }

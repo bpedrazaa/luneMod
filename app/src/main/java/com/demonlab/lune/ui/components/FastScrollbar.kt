@@ -241,12 +241,6 @@ private fun <T> FastScrollbarCore(
         idleHeaderBottom + (progress * availableHeight)
     }
 
-    // The letter stays visible while scrolling, not only while dragging.
-    val idleLetter = if (isDragging) "" else {
-        currentItems.getOrNull((currentFirstVisibleIndex() - headerItemCount).coerceAtLeast(0))
-            ?.let { currentItemKeyOrLetter(it).trim().take(1).uppercase() }
-            ?: ""
-    }
 
     val thumbWidth by animateDpAsState(
         targetValue = if (isDragging) 10.dp else 4.dp,
@@ -351,35 +345,6 @@ private fun <T> FastScrollbarCore(
                     }
                 )
         )
-
-        AnimatedVisibility(
-            visible = !isDragging && idleLetter.isNotEmpty(),
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset {
-                    IntOffset(
-                        -34.dp.roundToPx(),
-                        (idleThumbY - 12.dp.toPx()).roundToInt()
-                    )
-                }
-        ) {
-            Surface(
-                shape = RoundedCornerShape(percent = 50),
-                color = bubbleColor,
-                shadowElevation = if (hasBlurBackground) 3.dp else 6.dp,
-                modifier = Modifier.size(24.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                    Text(
-                        text = idleLetter,
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = bubbleTextColor
-                    )
-                }
-            }
-        }
 
         AnimatedVisibility(
             visible = isDragging && currentLetter.isNotEmpty(),

@@ -32,6 +32,7 @@ import com.demonlab.lune.tools.CategoryCoverManager
 import com.demonlab.lune.tools.Song
 import com.demonlab.lune.tools.SettingsManager
 import com.demonlab.lune.ui.components.SongCoverImage
+import com.demonlab.lune.ui.utils.firstLetter
 import com.demonlab.lune.ui.components.GridFastScrollbar
 import com.demonlab.lune.ui.components.ScrollToTopPill
 import com.demonlab.lune.ui.components.rememberScrollToTopVisibility
@@ -88,7 +89,7 @@ fun AlbumGrid(
     customActiveColor: Color? = null,
     activePlaylistId: Long? = null,
     category: String = "ALBUMS",
-    itemLetter: (Album) -> String = { it.name }
+    itemLetter: (Album) -> String = { firstLetter(it.name) }
 ) {
     val initialIndex = remember(activePlaylistId, albums) {
         if (activePlaylistId != null) {
