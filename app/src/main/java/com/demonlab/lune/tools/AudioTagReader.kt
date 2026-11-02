@@ -90,7 +90,8 @@ object AudioTagReader {
             year = year ?: tag.year
         }
 
-        if (year == null) {
+        // TYER and TDRC live in ID3, so only MP3 earns the extra open.
+        if (year == null && extension == "mp3") {
             year = Id3YearReader.readYear(file)
         }
 
