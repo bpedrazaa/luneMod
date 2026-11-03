@@ -159,6 +159,13 @@ class MusicProvider(private val context: Context) {
 
         // Strict scope: only files under the folder the user picked.
         val scopeRoot = LibraryScope.resolveRoot(context)
+        // A folder is set but cannot be mapped (its volume is gone): read as
+        // empty instead of falling back to the whole device.
+        if (scopeRoot == null && !settingsManager.showAllFoldersOnStart &&
+            settingsManager.musicFolderUri != null
+        ) {
+            return@withContext LibrarySync(emptyList(), emptyList())
+        }
         val scopePrefix = scopeRoot?.let { it.trimEnd('/') + "/" }
 
         val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
