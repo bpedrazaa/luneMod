@@ -1286,17 +1286,17 @@ class MusicService : MediaLibraryService() {
                     val volCurrent = ((1f - progress) * (1f - progress)).coerceIn(0f, 1f)
                     val volNext = (progress * progress).coerceIn(0f, 1f)
 
-                    if (isPlayerPrepared) mediaPlayer?.setVolume(volCurrent, volCurrent)
-                    if (isSecondaryPrepared) secondaryPlayer?.setVolume(volNext, volNext)
+                    // Keep balance and ducking while the fade runs.
+                    val (targetLeft, targetRight) = getCurrentTargetVolumes()
+                    if (isPlayerPrepared) mediaPlayer?.setVolume(targetLeft * volCurrent, targetRight * volCurrent)
+                    if (isSecondaryPrepared) secondaryPlayer?.setVolume(targetLeft * volNext, targetRight * volNext)
                     delay(interval)
                 }
 
                 if (!isCrossfading || !isActive) {
-                    try {
-                        secondaryPlayer?.release()
-                    } catch (_: Exception) {}
-                    secondaryPlayer = null
-                    isSecondaryPrepared = false
+                    releaseSecondaryPlayer()
+                    val (targetLeft, targetRight) = getCurrentTargetVolumes()
+                    mediaPlayer?.setVolume(targetLeft, targetRight)
                     return@launch
                 }
 
