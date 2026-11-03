@@ -212,9 +212,9 @@ class MusicService : MediaLibraryService() {
         pauseTimeoutJob?.cancel()
         crossfadeJob?.cancel()
         crossfadeJob = null
+        releaseSecondaryPlayer()
         try {
             if (isPlayerPrepared) mediaPlayer?.pause()
-            if (isSecondaryPrepared) secondaryPlayer?.pause()
         } catch (e: Exception) {
             Log.e("MusicService", "Error pausing player on transient focus loss", e)
         }
@@ -241,6 +241,14 @@ class MusicService : MediaLibraryService() {
         const val ACTION_DISMISS = "com.demonlab.lune.ACTION_DISMISS"
         const val ACTION_UPDATE_WIDGET = "com.demonlab.lune.ACTION_UPDATE_WIDGET"
         const val PAUSE_TIMEOUT_MS = 5 * 60 * 1000L
+    }
+
+    private fun releaseSecondaryPlayer() {
+        try {
+            secondaryPlayer?.release()
+        } catch (_: Exception) {}
+        secondaryPlayer = null
+        isSecondaryPrepared = false
     }
 
     fun onAudioOutputDeviceChanged() {
@@ -1450,9 +1458,9 @@ class MusicService : MediaLibraryService() {
 
         crossfadeJob?.cancel()
         crossfadeJob = null
+        releaseSecondaryPlayer()
         try {
             if (isPlayerPrepared) mediaPlayer?.pause()
-            if (isSecondaryPrepared) secondaryPlayer?.pause()
         } catch (e: Exception) {
             Log.e("MusicService", "Error pausing player", e)
         }
