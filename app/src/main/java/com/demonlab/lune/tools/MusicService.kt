@@ -81,10 +81,6 @@ class MusicService : MediaLibraryService() {
     internal var loudnessEffect: LoudnessEffect? = null
     internal var dynamicsEffect: DynamicsEffect? = null
 
-    private var secondaryEqualizer: Equalizer? = null
-    private var secondaryBassBoost: BassBoost? = null
-    private var secondaryVirtualizer: Virtualizer? = null
-
     private lateinit var settingsManager: SettingsManager
     private lateinit var audioManager: AudioManager
     private var audioFocusRequest: AudioFocusRequest? = null
@@ -353,25 +349,13 @@ class MusicService : MediaLibraryService() {
         }
     }
 
-    private fun setupAudioFx(sessionId: Int, isSecondary: Boolean = false) {
+    private fun setupAudioFx(sessionId: Int) {
         try {
-            if (isSecondary) {
-                secondaryEqualizer?.release()
-                secondaryBassBoost?.release()
-                secondaryVirtualizer?.release()
-                loudnessEffect?.release(true)
-                dynamicsEffect?.release(true)
-            } else {
-                try {
-                    equalizer?.release()
-                    bassBoost?.release()
-                    virtualizer?.release()
-                    loudnessEffect?.release(false)
-                    dynamicsEffect?.release(false)
-                } catch (t: Throwable) {
-                    t.printStackTrace()
-                }
-            }
+            equalizer?.release()
+            bassBoost?.release()
+            virtualizer?.release()
+            loudnessEffect?.release(false)
+            dynamicsEffect?.release(false)
         } catch (t: Throwable) {
             t.printStackTrace()
         }
@@ -388,7 +372,7 @@ class MusicService : MediaLibraryService() {
                 }
                 enabled = settingsManager.isEqEnabled
             }
-            if (isSecondary) secondaryEqualizer = eq else equalizer = eq
+            equalizer = eq
         } catch (t: Throwable) { t.printStackTrace() }
 
         try {
@@ -396,7 +380,7 @@ class MusicService : MediaLibraryService() {
                 if (strengthSupported) setStrength(settingsManager.bassBoostLevel.toShort())
                 enabled = settingsManager.isBassBoostEnabled
             }
-            if (isSecondary) secondaryBassBoost = bb else bassBoost = bb
+            bassBoost = bb
         } catch (t: Throwable) { t.printStackTrace() }
 
         try {
@@ -407,30 +391,22 @@ class MusicService : MediaLibraryService() {
                     currentSpatialStrength = 800.toShort()
                 }
             }
-            if (isSecondary) secondaryVirtualizer = virt else virtualizer = virt
+            virtualizer = virt
         } catch (t: Throwable) { t.printStackTrace() }
 
         try {
-            if (isSecondary) {
-                loudnessEffect?.setup(sessionId, true, settingsManager.isLoudnessEnabled, settingsManager.loudnessGain)
-            } else {
-                val loud = LoudnessEffect().apply {
-                    setup(sessionId, false, settingsManager.isLoudnessEnabled, settingsManager.loudnessGain)
-                }
-                loudnessEffect = loud
+            val loud = LoudnessEffect().apply {
+                setup(sessionId, false, settingsManager.isLoudnessEnabled, settingsManager.loudnessGain)
             }
+            loudnessEffect = loud
         } catch (t: Throwable) { t.printStackTrace() }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             try {
-                if (isSecondary) {
-                    dynamicsEffect?.setup(sessionId, true, settingsManager.dynamicsPreset)
-                } else {
-                    val dyn = DynamicsEffect().apply {
-                        setup(sessionId, false, settingsManager.dynamicsPreset)
-                    }
-                    dynamicsEffect = dyn
+                val dyn = DynamicsEffect().apply {
+                    setup(sessionId, false, settingsManager.dynamicsPreset)
                 }
+                dynamicsEffect = dyn
             } catch (t: Throwable) {
                 t.printStackTrace()
             }
@@ -1041,7 +1017,7 @@ class MusicService : MediaLibraryService() {
                         isPlayerPrepared = true
                         acquireWakeLock()
                         val sessionId = audioSessionId
-                        setupAudioFx(sessionId, false)
+                        setupAudioFx(sessionId)
                         isDucked = false
                         applyBalance(PlaybackManager.getInstance(applicationContext).balance)
                         start()
@@ -1318,12 +1294,8 @@ class MusicService : MediaLibraryService() {
 
                 val newSessionId = mediaPlayer?.audioSessionId ?: 0
                 if (newSessionId != 0) {
-                    setupAudioFx(newSessionId, false)
+                    setupAudioFx(newSessionId)
                 }
-
-                secondaryEqualizer = null
-                secondaryBassBoost = null
-                secondaryVirtualizer = null
 
                 mediaPlayer?.setVolume(1f, 1f)
                 applyBalance(PlaybackManager.getInstance(applicationContext).balance)
@@ -1686,7 +1658,7 @@ class MusicService : MediaLibraryService() {
                     try {
                         isPlayerPrepared = true
                         val sessionId = audioSessionId
-                        setupAudioFx(sessionId, false)
+                        setupAudioFx(sessionId)
                         isDucked = false
                         applyBalance(pm.balance)
                         seekTo(positionMs.toInt())
@@ -2225,9 +2197,6 @@ class MusicService : MediaLibraryService() {
             virtualizer?.release()
             loudnessEffect?.releaseAll()
             dynamicsEffect?.releaseAll()
-            secondaryEqualizer?.release()
-            secondaryBassBoost?.release()
-            secondaryVirtualizer?.release()
         } catch (t: Throwable) {
             t.printStackTrace()
         }
@@ -2317,26 +2286,22 @@ class MusicService : MediaLibraryService() {
         if (!enabled) {
             executeEffectTransition(true) {
                 equalizer?.enabled = false
-                secondaryEqualizer?.enabled = false
             }
         } else {
             effectTransitionJob?.cancel()
             equalizer?.enabled = true
-            secondaryEqualizer?.enabled = true
         }
     }
 
     fun setEqBandLevel(band: Short, level: Short) {
         try {
             equalizer?.setBandLevel(band, level)
-            secondaryEqualizer?.setBandLevel(band, level)
         } catch (e: Exception) { e.printStackTrace() }
     }
 
     fun useEqPreset(presetIndex: Short) {
         try {
             equalizer?.usePreset(presetIndex)
-            secondaryEqualizer?.usePreset(presetIndex)
         } catch (e: Exception) { e.printStackTrace() }
     }
 
@@ -2345,17 +2310,12 @@ class MusicService : MediaLibraryService() {
             executeEffectTransition(true) {
                 onBeforeDisable?.invoke()
                 bassBoost?.enabled = false
-                secondaryBassBoost?.enabled = false
             }
         } else {
             effectTransitionJob?.cancel()
             bassBoost?.enabled = true
-            secondaryBassBoost?.enabled = true
             if (bassBoost?.strengthSupported == true) {
                 bassBoost?.setStrength(settingsManager.bassBoostLevel.toShort())
-            }
-            if (secondaryBassBoost?.strengthSupported == true) {
-                secondaryBassBoost?.setStrength(settingsManager.bassBoostLevel.toShort())
             }
         }
     }
@@ -2363,9 +2323,6 @@ class MusicService : MediaLibraryService() {
     fun setBassBoostStrength(strength: Short) {
         if (bassBoost?.strengthSupported == true) {
             bassBoost?.setStrength(strength)
-        }
-        if (secondaryBassBoost?.strengthSupported == true) {
-            secondaryBassBoost?.setStrength(strength)
         }
     }
 
@@ -2411,7 +2368,6 @@ class MusicService : MediaLibraryService() {
 
             if (enabled) {
                 virtualizer?.enabled = true
-                secondaryVirtualizer?.enabled = true
             }
 
             for (i in 0..steps) {
@@ -2423,9 +2379,6 @@ class MusicService : MediaLibraryService() {
                 if (virtualizer?.strengthSupported == true) {
                     virtualizer?.setStrength(value)
                 }
-                if (secondaryVirtualizer?.strengthSupported == true) {
-                    secondaryVirtualizer?.setStrength(value)
-                }
                 delay(10)
             }
 
@@ -2434,7 +2387,6 @@ class MusicService : MediaLibraryService() {
             if (!enabled) {
                 executeEffectTransition(true) {
                     virtualizer?.enabled = false
-                    secondaryVirtualizer?.enabled = false
                 }
             }
         }
