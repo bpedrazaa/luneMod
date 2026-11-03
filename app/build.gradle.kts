@@ -27,8 +27,8 @@ android {
         applicationId = "com.demonlab.lune"
         minSdk = 24
         targetSdk = 37
-        versionCode = 15
-        versionName = "1.6.0"
+        versionCode = 16
+        versionName = "1.7.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
