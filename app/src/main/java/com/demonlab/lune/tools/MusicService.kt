@@ -1495,6 +1495,7 @@ class MusicService : MediaLibraryService() {
             return
         }
         pm.updatePlayingState(true)
+        startCrossfadeMonitor()
         updatePlaybackState()
         startWidgetUpdateTimer()
         updateWidget()
@@ -1721,6 +1722,7 @@ class MusicService : MediaLibraryService() {
                         PlaybackManager.getInstance(applicationContext).playNextFromService(true)
                     }
                 }
+                startCrossfadeMonitor()
             }
         } catch (e: Exception) {
             Log.e("MusicService", "Error configuring MediaPlayer in restorePlayback", e)
