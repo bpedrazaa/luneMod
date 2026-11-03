@@ -110,6 +110,11 @@
     <string name="resume_recently_added">Recently Added</string>
     <string name="tab_all">All</string>
     <string name="tab_favorites">Favorites</string>
+    <string name="favorite_album">Favorite album</string>
+    <string name="favorite_album_artist">Favorite album artist</string>
+    <string name="favorites_albums">Favorite albums</string>
+    <string name="favorites_album_artists">Favorite album artists</string>
+    <string name="favorites_songs">Favorite songs</string>
     <string name="tab_folders">Folders</string>
     <string name="tab_songs">Songs</string>
     <string name="tab_artists">Artists</string>

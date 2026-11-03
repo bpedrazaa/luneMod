@@ -723,6 +723,8 @@ fun AlbumDetailView(
     currentlyPlayingId: Long?,
     bottomPadding: Dp,
     onFavoriteClick: ((Song) -> Unit)? = null,
+    isAlbumFavorite: Boolean = false,
+    onAlbumFavoriteClick: (() -> Unit)? = null,
     scrollToCurrentTrigger: MutableState<Int>,
     hasBlurBackground: Boolean = false,
     isDarkTheme: Boolean = false,
@@ -1408,23 +1410,50 @@ fun AlbumDetailView(
                     }
                 }
 
-                Surface(
-                    onClick = { showEditCoversSheet = true },
-                    enabled = headerAlpha > 0.05f,
-                    shape = CircleShape,
-                    color = topBtnBg,
-                    border = null,
-                    modifier = Modifier
-                        .size(42.dp)
-                        .bounceClick()
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = stringResource(R.string.edit_covers),
-                            tint = topBtnTint,
-                            modifier = Modifier.size(20.dp)
-                        )
+                    if (onAlbumFavoriteClick != null) {
+                        Surface(
+                            onClick = onAlbumFavoriteClick,
+                            enabled = headerAlpha > 0.05f,
+                            shape = CircleShape,
+                            color = topBtnBg,
+                            border = null,
+                            modifier = Modifier
+                                .size(42.dp)
+                                .bounceClick()
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = if (isAlbumFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                    contentDescription = stringResource(R.string.favorite_album),
+                                    tint = if (isAlbumFavorite) MaterialTheme.colorScheme.primary else topBtnTint,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Surface(
+                        onClick = { showEditCoversSheet = true },
+                        enabled = headerAlpha > 0.05f,
+                        shape = CircleShape,
+                        color = topBtnBg,
+                        border = null,
+                        modifier = Modifier
+                            .size(42.dp)
+                            .bounceClick()
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = stringResource(R.string.edit_covers),
+                                tint = topBtnTint,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 }
             }

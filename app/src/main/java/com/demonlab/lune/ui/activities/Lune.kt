@@ -727,6 +727,7 @@ fun MainScreen(
     
     var showMenu by remember { mutableStateOf(false) }
     var selectedAlbum by remember { mutableStateOf<Album?>(null) }
+    var detailAlbumArtistName by remember { mutableStateOf<String?>(null) }
     var selectedFolderItem by remember { mutableStateOf<String?>(null) }
     var isAlbumView by remember { mutableStateOf(settingsManager.albumBrowseMode) }
     var folderHierarchyMode by remember { mutableStateOf(settingsManager.folderHierarchyMode) }
@@ -2562,6 +2563,24 @@ fun MainScreen(
                         playbackManager.toggleFavorite(song)?.let { updated ->
                             musicViewModel.syncFavoriteStatusInMemory(updated.id, updated.isFavorite)
                         }
+                    },
+                    isAlbumFavorite = when {
+                        detailAlbumArtistName != null && detailAlbumArtistName == albumRender.name ->
+                            musicViewModel.isFavoriteAlbumArtist(albumRender.name)
+                        currentCategory == "ALBUM_ARTISTS" ->
+                            musicViewModel.isFavoriteAlbumArtist(albumRender.name)
+                        currentCategory == "ALBUMS" ->
+                            musicViewModel.isFavoriteAlbum(albumRender.artist, albumRender.name)
+                        else -> false
+                    },
+                    onAlbumFavoriteClick = when {
+                        detailAlbumArtistName != null && detailAlbumArtistName == albumRender.name ->
+                            ({ musicViewModel.toggleFavoriteAlbumArtist(albumRender.name) })
+                        currentCategory == "ALBUM_ARTISTS" ->
+                            ({ musicViewModel.toggleFavoriteAlbumArtist(albumRender.name) })
+                        currentCategory == "ALBUMS" ->
+                            ({ musicViewModel.toggleFavoriteAlbum(albumRender.artist, albumRender.name) })
+                        else -> null
                     },
                     scrollToCurrentTrigger = scrollToCurrentTrigger,
                     hasBlurBackground = hasBlurBackgroundMini,
