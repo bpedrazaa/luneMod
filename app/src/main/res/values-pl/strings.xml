@@ -24,7 +24,6 @@
     <string name="bass_label">EXTRA BASS</string>
     <string name="spatial_audio_label">Dźwięk przestrzenny</string>
     <string name="loudness_label">Głośność</string>
-    <string name="reverb_label">Pogłos</string>
     <string name="balance_label">Balans</string>
     <string name="balance_reset">Resetuj balans</string>
     <string name="dynamics_label">Dynamika</string>

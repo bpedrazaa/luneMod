@@ -24,7 +24,6 @@
     <string name="bass_label">جهير إضافي (EXTRA BASS)</string>
     <string name="spatial_audio_label">صوت مكاني</string>
     <string name="loudness_label">جهارة الصوت</string>
-    <string name="reverb_label">صدى</string>
     <string name="balance_label">توازن</string>
     <string name="balance_reset">إعادة ضبط التوازن</string>
     <string name="dynamics_label">الديناميكيات</string>

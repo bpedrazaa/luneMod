@@ -537,44 +537,6 @@ fun EqualizerScreen(onBack: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                val reverbNames = listOf("None", "Small Room", "Medium Room", "Large Room", "Medium Hall", "Large Hall", "Plate")
-                val reverbValues = listOf(0, 1, 2, 3, 4, 5, 6)
-                var currentReverb by remember { mutableStateOf(playbackManager.reverbPreset) }
-
-                LaunchedEffect(playbackManager.reverbPreset) {
-                    currentReverb = playbackManager.reverbPreset
-                }
-
-                Text(
-                    stringResource(R.string.reverb_label),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = textColor
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items(reverbNames.size) { index ->
-                        val isActive = currentReverb == reverbValues[index]
-                        FilterChip(
-                            selected = isActive,
-                            onClick = {
-                                currentReverb = reverbValues[index]
-                                playbackManager.updateReverbPreset(reverbValues[index])
-                            },
-                            label = { Text(reverbNames[index]) },
-                            border = null,
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = if (hasBlurBackground && currentSong != null) (if (useCustomControlsColor) activePrimary else Color.White.copy(alpha = 0.35f)) else (if (useCustomControlsColor) activePrimary else MaterialTheme.colorScheme.primaryContainer),
-                                selectedLabelColor = if (hasBlurBackground && currentSong != null) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
-                                containerColor = if (hasBlurBackground && currentSong != null) Color.White.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                labelColor = if (hasBlurBackground && currentSong != null) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
-                            ),
-                            modifier = Modifier.bounceClick()
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
                 var balanceValue by remember { mutableStateOf(playbackManager.balance) }
 
                 LaunchedEffect(playbackManager.balance) {

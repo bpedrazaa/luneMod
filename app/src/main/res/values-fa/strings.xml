@@ -24,7 +24,6 @@
     <string name="bass_label">بیسِ کار</string>
     <string name="spatial_audio_label">صدای سه‌بعدی</string>
     <string name="loudness_label">بلندی صدا</string>
-    <string name="reverb_label">اکو (Reverb)</string>
     <string name="balance_label">بالانس چپ و راست</string>
     <string name="balance_reset">ریست کردن بالانس</string>
     <string name="dynamics_label">داینامیک</string>

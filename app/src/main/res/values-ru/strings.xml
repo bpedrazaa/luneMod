@@ -25,7 +25,6 @@
     <string name="bass_label">EXTRA BASS</string>
     <string name="spatial_audio_label">Объёмный звук</string>
     <string name="loudness_label">Громкость</string>
-    <string name="reverb_label">Reverb</string>
     <string name="balance_label">Баланс</string>
     <string name="balance_reset">Сбросить баланс</string>
     <string name="dynamics_label">Динамика</string>

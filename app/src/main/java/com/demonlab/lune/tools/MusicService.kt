@@ -22,7 +22,6 @@ import com.demonlab.lune.R
 import com.demonlab.lune.audio.BalanceEffect
 import com.demonlab.lune.audio.DynamicsEffect
 import com.demonlab.lune.audio.LoudnessEffect
-import com.demonlab.lune.audio.ReverbEffect
 import com.demonlab.lune.ui.activities.Lune
 import kotlinx.coroutines.*
 import android.media.audiofx.Equalizer
@@ -80,7 +79,6 @@ class MusicService : MediaLibraryService() {
     internal var virtualizer: Virtualizer? = null
 
     internal var loudnessEffect: LoudnessEffect? = null
-    internal var reverbEffect: ReverbEffect? = null
     internal var dynamicsEffect: DynamicsEffect? = null
 
     private var secondaryEqualizer: Equalizer? = null
@@ -354,7 +352,6 @@ class MusicService : MediaLibraryService() {
                 secondaryBassBoost?.release()
                 secondaryVirtualizer?.release()
                 loudnessEffect?.release(true)
-                reverbEffect?.release(true)
                 dynamicsEffect?.release(true)
             } else {
                 try {
@@ -362,7 +359,6 @@ class MusicService : MediaLibraryService() {
                     bassBoost?.release()
                     virtualizer?.release()
                     loudnessEffect?.release(false)
-                    reverbEffect?.release(false)
                     dynamicsEffect?.release(false)
                 } catch (t: Throwable) {
                     t.printStackTrace()
@@ -409,16 +405,11 @@ class MusicService : MediaLibraryService() {
         try {
             if (isSecondary) {
                 loudnessEffect?.setup(sessionId, true, settingsManager.isLoudnessEnabled, settingsManager.loudnessGain)
-                reverbEffect?.setup(sessionId, true, settingsManager.reverbPreset)
             } else {
                 val loud = LoudnessEffect().apply {
                     setup(sessionId, false, settingsManager.isLoudnessEnabled, settingsManager.loudnessGain)
                 }
                 loudnessEffect = loud
-                val rev = ReverbEffect().apply {
-                    setup(sessionId, false, settingsManager.reverbPreset)
-                }
-                reverbEffect = rev
             }
         } catch (t: Throwable) { t.printStackTrace() }
 
@@ -1312,7 +1303,6 @@ class MusicService : MediaLibraryService() {
                     bassBoost?.release()
                     virtualizer?.release()
                     loudnessEffect?.release(false)
-                    reverbEffect?.release(false)
                     dynamicsEffect?.release(false)
                 } catch (t: Throwable) {
                     t.printStackTrace()
@@ -2226,7 +2216,6 @@ class MusicService : MediaLibraryService() {
             bassBoost?.release()
             virtualizer?.release()
             loudnessEffect?.releaseAll()
-            reverbEffect?.releaseAll()
             dynamicsEffect?.releaseAll()
             secondaryEqualizer?.release()
             secondaryBassBoost?.release()
@@ -2369,17 +2358,6 @@ class MusicService : MediaLibraryService() {
         }
         if (secondaryBassBoost?.strengthSupported == true) {
             secondaryBassBoost?.setStrength(strength)
-        }
-    }
-
-    fun setReverbPreset(preset: Int) {
-        if (preset == 0) {
-            executeEffectTransition(true) {
-                reverbEffect?.setPreset(0)
-            }
-        } else {
-            effectTransitionJob?.cancel()
-            reverbEffect?.setPreset(preset)
         }
     }
 

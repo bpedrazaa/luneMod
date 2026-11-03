@@ -225,8 +225,6 @@ class PlaybackManager private constructor(private val context: Context) {
         private set
     var isTuning432 by mutableStateOf(settings.isTuning432)
         private set
-    var reverbPreset by mutableStateOf(settings.reverbPreset)
-        private set
     var balance by mutableStateOf(settings.balance)
         private set
     var dynamicsPreset by mutableStateOf(settings.dynamicsPreset)
@@ -1345,12 +1343,6 @@ class PlaybackManager private constructor(private val context: Context) {
         isSpatialAudioEnabled = !isSpatialAudioEnabled
         settings.isSpatialAudioEnabled = isSpatialAudioEnabled
         musicService?.setSpatialAudioEnabled(isSpatialAudioEnabled)
-    }
-
-    fun updateReverbPreset(preset: Int) {
-        reverbPreset = preset
-        settings.reverbPreset = preset
-        musicService?.setReverbPreset(preset)
     }
 
     fun updateBalance(balance: Float) {

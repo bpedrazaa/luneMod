@@ -25,7 +25,6 @@
     <string name="bass_label">增强低音</string>
     <string name="spatial_audio_label">空间音频</string>
     <string name="loudness_label">响度</string>
-    <string name="reverb_label">混响</string>
     <string name="balance_label">平衡</string>
     <string name="balance_reset">重置平衡</string>
     <string name="dynamics_label">动态</string>
