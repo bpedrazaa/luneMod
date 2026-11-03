@@ -115,6 +115,8 @@
     <string name="favorites_albums">Favorite albums</string>
     <string name="favorites_album_artists">Favorite album artists</string>
     <string name="favorites_songs">Favorite songs</string>
+    <string name="favorites_empty">No favorites yet</string>
+    <string name="favorites_song_count">%1$d songs</string>
     <string name="tab_folders">Folders</string>
     <string name="tab_songs">Songs</string>
     <string name="tab_artists">Artists</string>

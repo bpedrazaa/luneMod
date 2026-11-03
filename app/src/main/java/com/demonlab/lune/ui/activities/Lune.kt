@@ -491,8 +491,10 @@ class Lune : AppCompatActivity() {
             val visibleFolders = remember(allFolders, hiddenFolders.value) {
                 allFolders.filter { !hiddenFolders.value.contains(it) }
             }
-            val folders = remember(visibleFolders, rawAllSongs, sTabPlaylists, isSectionCustomizationEnabled, hiddenSectionTabs, showAiSection, defaultSectionTab) {
-                val hasFavorites = rawAllSongs.any { it.isFavorite }
+            val folders = remember(visibleFolders, rawAllSongs, sTabPlaylists, isSectionCustomizationEnabled, hiddenSectionTabs, showAiSection, defaultSectionTab, musicViewModel.favoriteAlbumKeys, musicViewModel.favoriteAlbumArtistNames) {
+                val hasFavorites = rawAllSongs.any { it.isFavorite } ||
+                    musicViewModel.favoriteAlbumKeys.isNotEmpty() ||
+                    musicViewModel.favoriteAlbumArtistNames.isNotEmpty()
                 // Albums and album artists first, the browsing axes of this library.
                 val base = mutableListOf("ALBUMS", "ALBUM_ARTISTS", "ALL")
                 if (hasFavorites) base.add("FAVORITES")
@@ -1467,6 +1469,7 @@ fun MainScreen(
                             folder == "GENRES" -> "GENRE_GRID"
                             folder == "FOLDERS" -> "FOLDER_GRID"
                             folder == "PLAYLISTS" -> "PLAYLIST_GRID"
+                            folder == "FAVORITES" -> "FAVORITES"
                             pageFilteredSongs.isEmpty() -> "EMPTY"
                             else -> "LIST"
                         }
@@ -2162,6 +2165,80 @@ fun MainScreen(
                                     }
                                 }
                             }
+                        }
+                        "FAVORITES" -> {
+                            val isCurrentListPlaying = playbackManager.activePlaylistId == -200L &&
+                                playbackManager.activeCategory == "FAVORITES"
+                            var favShuffle by remember(pageContextId) {
+                                mutableStateOf(settingsManager.getPlaylistShuffle(pageContextId))
+                            }
+                            val favoriteAlbums = remember(albumsList, musicViewModel.favoriteAlbumKeys) {
+                                albumsList.filter { musicViewModel.isFavoriteAlbum(it.artist, it.name) }
+                            }
+                            val favoriteAlbumArtists = remember(albumArtistsList, musicViewModel.favoriteAlbumArtistNames) {
+                                albumArtistsList.filter { musicViewModel.isFavoriteAlbumArtist(it.name) }
+                            }
+                            com.demonlab.lune.ui.screens.FavoritesScreen(
+                                songs = pageSortedSongs,
+                                albums = favoriteAlbums,
+                                albumArtists = favoriteAlbumArtists,
+                                currentSongId = currentSong?.id,
+                                isPlaying = isPlaying,
+                                isCurrentListPlaying = isCurrentListPlaying,
+                                isShuffleActive = favShuffle,
+                                hasBlurBackground = hasBlurBackgroundMini && currentSong != null,
+                                isDarkTheme = isDarkThemeMini,
+                                useCustomControlsColor = useCustomControlsColor,
+                                controlsColorPalette = controlsColorPalette,
+                                bottomPadding = bottomPadding,
+                                onPlayClick = {
+                                    if (isCurrentListPlaying) {
+                                        if (isPlaying) playbackManager.pause() else playbackManager.resume()
+                                        onIsPlayingChange(!isPlaying)
+                                    } else if (pageSortedSongs.isNotEmpty()) {
+                                        val songToPlay = if (favShuffle) pageSortedSongs.random() else pageSortedSongs[0]
+                                        onCurrentSongChange(songToPlay)
+                                        playbackManager.play(songToPlay, pageSortedSongs, pageContextId, category = "FAVORITES", shuffleMode = favShuffle)
+                                        onIsPlayingChange(true)
+                                    }
+                                },
+                                onShuffleClick = {
+                                    favShuffle = !favShuffle
+                                    settingsManager.setPlaylistShuffle(pageContextId, favShuffle)
+                                },
+                                onSongClick = { song ->
+                                    if (playbackManager.currentSong?.id != song.id || playbackManager.activePlaylistId != pageContextId) {
+                                        onCurrentSongChange(song)
+                                        playbackManager.play(song, pageSortedSongs, pageContextId, category = "FAVORITES", shuffleMode = favShuffle)
+                                        onIsPlayingChange(true)
+                                    }
+                                },
+                                onSongOptions = { song ->
+                                    optionsSong = song
+                                    showOptionsSheet = true
+                                },
+                                onSongFavorite = { song ->
+                                    playbackManager.toggleFavorite(song)?.let { updated ->
+                                        musicViewModel.syncFavoriteStatusInMemory(updated.id, updated.isFavorite)
+                                    }
+                                },
+                                onAlbumClick = { album ->
+                                    detailAlbumArtistName = null
+                                    isAlbumView = true
+                                    selectedAlbum = album
+                                },
+                                onArtistClick = { artist ->
+                                    detailAlbumArtistName = artist.name
+                                    isAlbumView = false
+                                    selectedAlbum = artist
+                                },
+                                onAlbumFavorite = { album ->
+                                    musicViewModel.toggleFavoriteAlbum(album.artist, album.name)
+                                },
+                                onArtistFavorite = { artist ->
+                                    musicViewModel.toggleFavoriteAlbumArtist(artist.name)
+                                }
+                            )
                         }
                         "EMPTY" -> {
                             Box(
