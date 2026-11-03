@@ -351,15 +351,11 @@ class MusicService : MediaLibraryService() {
     }
 
     private fun setupAudioFx(sessionId: Int) {
-        try {
-            equalizer?.release()
-            bassBoost?.release()
-            virtualizer?.release()
-            loudnessEffect?.release(false)
-            dynamicsEffect?.release(false)
-        } catch (t: Throwable) {
-            t.printStackTrace()
-        }
+        runCatching { equalizer?.release() }
+        runCatching { bassBoost?.release() }
+        runCatching { virtualizer?.release() }
+        runCatching { loudnessEffect?.release(false) }
+        runCatching { dynamicsEffect?.release(false) }
 
         try {
             val eq = Equalizer(0, sessionId).apply {
@@ -1284,15 +1280,11 @@ class MusicService : MediaLibraryService() {
                 isPlayerPrepared = isSecondaryPrepared
                 isSecondaryPrepared = false
 
-                try {
-                    equalizer?.release()
-                    bassBoost?.release()
-                    virtualizer?.release()
-                    loudnessEffect?.release(false)
-                    dynamicsEffect?.release(false)
-                } catch (t: Throwable) {
-                    t.printStackTrace()
-                }
+                runCatching { equalizer?.release() }
+                runCatching { bassBoost?.release() }
+                runCatching { virtualizer?.release() }
+                runCatching { loudnessEffect?.release(false) }
+                runCatching { dynamicsEffect?.release(false) }
 
                 val newSessionId = mediaPlayer?.audioSessionId ?: 0
                 if (newSessionId != 0) {
@@ -2193,17 +2185,13 @@ class MusicService : MediaLibraryService() {
             mediaPlayer?.stop()
             secondaryPlayer?.stop()
         } catch (_: Exception) {}
-        try {
-            equalizer?.release()
-            bassBoost?.release()
-            virtualizer?.release()
-            loudnessEffect?.releaseAll()
-            dynamicsEffect?.releaseAll()
-        } catch (t: Throwable) {
-            t.printStackTrace()
-        }
-        mediaPlayer?.release()
-        secondaryPlayer?.release()
+        runCatching { equalizer?.release() }
+        runCatching { bassBoost?.release() }
+        runCatching { virtualizer?.release() }
+        runCatching { loudnessEffect?.releaseAll() }
+        runCatching { dynamicsEffect?.releaseAll() }
+        runCatching { mediaPlayer?.release() }
+        runCatching { secondaryPlayer?.release() }
         mediaSession?.let {
             try {
                 removeSession(it)
