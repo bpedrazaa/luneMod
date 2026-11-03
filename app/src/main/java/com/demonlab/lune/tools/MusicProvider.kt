@@ -23,6 +23,8 @@ import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 
 class UriTypeAdapter : TypeAdapter<Uri>() {
@@ -67,6 +69,9 @@ class MusicProvider(private val context: Context) {
             "mp3", "flac", "wav", "aac", "m4a", "ogg", "opus", "wma", "alac", "dsf", "dff", "aiff", "ape"
         )
         private val HI_FI_EXTENSIONS = setOf("flac", "wav", "alac", "dsf", "dff", "aiff", "ape")
+        // A Settings rescan calls refreshLibrary directly; serialize it with the
+        // view model's pass so the same pending files are not read twice.
+        private val enrichMutex = Mutex()
     }
 
     private val settingsManager = SettingsManager.getInstance(context)
@@ -524,8 +529,21 @@ class MusicProvider(private val context: Context) {
         onBatch: suspend (entries: List<FileTagCache>, attempted: Int) -> Unit
     ) {
         if (pending.isEmpty()) return
+        enrichMutex.withLock {
+            enrichTagsLocked(pending, batchSize, onBatch)
+        }
+    }
+
+    private suspend fun enrichTagsLocked(
+        pending: List<PendingTag>,
+        batchSize: Int,
+        onBatch: suspend (entries: List<FileTagCache>, attempted: Int) -> Unit
+    ) {
         val dao = database.fileTagDao()
-        pending.chunked(batchSize).forEach { chunk ->
+        // A second pass can carry a list computed before the first one stamped
+        // those rows; drop anything already at the current epoch.
+        val stamped = dao.getAll().filter { it.epoch == TAG_CACHE_VERSION }.mapTo(HashSet()) { it.path }
+        pending.filterNot { it.path in stamped }.chunked(batchSize).forEach { chunk ->
             val entries = withContext(Dispatchers.IO) {
                 chunk.mapNotNull { pendingTag ->
                     val file = File(pendingTag.path)
