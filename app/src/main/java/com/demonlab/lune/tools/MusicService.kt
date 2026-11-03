@@ -71,6 +71,7 @@ class MusicService : MediaLibraryService() {
     @Volatile private var isPlayerPrepared = false
     @Volatile private var isSecondaryPrepared = false
     private var mediaSession: MediaLibrarySession? = null
+    private var notificationControllerFuture: ListenableFuture<MediaController>? = null
     private val binder = MusicBinder()
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
 
@@ -916,7 +917,8 @@ class MusicService : MediaLibraryService() {
             val notificationHints = Bundle().apply {
                 putBoolean("androidx.media3.session.MediaNotificationManager", true)
             }
-            MediaController.Builder(this, newSession.token)
+            notificationControllerFuture?.let { MediaController.releaseFuture(it) }
+            notificationControllerFuture = MediaController.Builder(this, newSession.token)
                 .setConnectionHints(notificationHints)
                 .buildAsync()
         }
@@ -2209,6 +2211,8 @@ class MusicService : MediaLibraryService() {
             it.release()
         }
         mediaSession = null
+        notificationControllerFuture?.let { MediaController.releaseFuture(it) }
+        notificationControllerFuture = null
         lunePlayerAdapter?.release()
         lunePlayerAdapter = null
         serviceScope.cancel()
