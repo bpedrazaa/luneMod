@@ -1599,6 +1599,10 @@ fun MainScreen(
                                             customActiveColor = listActiveControlsColor,
                                             activePlaylistId = currentSong?.let { Album.idFor(it.displayAlbumArtist, it.album) },
                                             category = "ALBUMS",
+                                            isFavorite = { musicViewModel.isFavoriteAlbum(it.artist, it.name) },
+                                            onFavoriteClick = { album ->
+                                                musicViewModel.toggleFavoriteAlbum(album.artist, album.name)
+                                            },
                                             itemLetter = {
                                                 when (albumSortOption) {
                                                     "ARTIST" -> artistLetter(it.artist)
@@ -1735,6 +1739,10 @@ fun MainScreen(
                                             customActiveColor = listActiveControlsColor,
                                             activePlaylistId = currentSong?.displayAlbumArtist?.hashCode()?.toLong(),
                                             category = "ALBUM_ARTISTS",
+                                            isFavorite = { musicViewModel.isFavoriteAlbumArtist(it.name) },
+                                            onFavoriteClick = { album ->
+                                                musicViewModel.toggleFavoriteAlbumArtist(album.name)
+                                            },
                                             itemLetter = albumArtistItemLetter
                                         )
                                     } else {

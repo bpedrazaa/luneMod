@@ -12,6 +12,10 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -19,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -89,6 +94,8 @@ fun AlbumGrid(
     customActiveColor: Color? = null,
     activePlaylistId: Long? = null,
     category: String = "ALBUMS",
+    isFavorite: (Album) -> Boolean = { false },
+    onFavoriteClick: ((Album) -> Unit)? = null,
     itemLetter: (Album) -> String = { firstLetter(it.name) }
 ) {
     val initialIndex = remember(activePlaylistId, albums) {
@@ -131,7 +138,9 @@ fun AlbumGrid(
                     onClick = { onAlbumClick(album) },
                     hasBlurBackground = hasBlurBackground,
                     isPlaying = isPlaying,
-                    category = category
+                    category = category,
+                    isFavorite = isFavorite(album),
+                    onFavoriteClick = onFavoriteClick?.let { { it(album) } }
                 )
             }
         }
@@ -170,7 +179,9 @@ fun AlbumCard(
     onClick: () -> Unit,
     hasBlurBackground: Boolean = false,
     isPlaying: Boolean = false,
-    category: String = "ALBUMS"
+    category: String = "ALBUMS",
+    isFavorite: Boolean = false,
+    onFavoriteClick: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val categoryUpdates by CategoryCoverManager.updates.collectAsState()
@@ -235,6 +246,26 @@ fun AlbumCard(
                         shape = coverShape,
                         iconScale = 0.68f
                     )
+                }
+            }
+            if (onFavoriteClick != null) {
+                Surface(
+                    onClick = onFavoriteClick,
+                    shape = CircleShape,
+                    color = Color.Black.copy(alpha = 0.35f),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(30.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = stringResource(R.string.option_favorite),
+                            tint = if (isFavorite) MaterialTheme.colorScheme.primary else Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
         }
