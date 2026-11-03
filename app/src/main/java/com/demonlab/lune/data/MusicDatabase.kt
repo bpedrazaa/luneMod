@@ -14,6 +14,24 @@ data class SongOverride(
 )
 
 /**
+ * An album the user liked, independent of its tracks. The identity is the
+ * album artist plus the title, the same pair [Album.keyFor] uses.
+ */
+@Entity(tableName = "favorite_albums", primaryKeys = ["albumArtist", "albumTitle"])
+data class FavoriteAlbum(
+    val albumArtist: String,
+    val albumTitle: String,
+    val addedAt: Long = System.currentTimeMillis()
+)
+
+/** An album artist the user liked, keyed by the name the library shows. */
+@Entity(tableName = "favorite_album_artists")
+data class FavoriteAlbumArtist(
+    @PrimaryKey val name: String,
+    val addedAt: Long = System.currentTimeMillis()
+)
+
+/**
  * Tags that MediaStore does not expose, keyed by path and invalidated by
  * size + last-modified. Avoids reopening every audio file on each sync.
  */
@@ -58,6 +76,27 @@ interface FileTagDao {
 
     @Query("DELETE FROM file_tag_cache WHERE path IN (:paths)")
     suspend fun deleteAll(paths: List<String>)
+}
+
+@Dao
+interface FavoriteDao {
+    @Query("SELECT * FROM favorite_albums")
+    suspend fun getAlbums(): List<FavoriteAlbum>
+
+    @Query("SELECT * FROM favorite_album_artists")
+    suspend fun getAlbumArtists(): List<FavoriteAlbumArtist>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun addAlbum(album: FavoriteAlbum)
+
+    @Delete
+    suspend fun removeAlbum(album: FavoriteAlbum)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun addAlbumArtist(artist: FavoriteAlbumArtist)
+
+    @Delete
+    suspend fun removeAlbumArtist(artist: FavoriteAlbumArtist)
 }
 
 @Entity(tableName = "playlists")
@@ -180,8 +219,8 @@ interface PlaybackStatsDao {
 }
 
 @Database(
-    entities = [SongOverride::class, Playlist::class, PlaylistSong::class, PlaybackStats::class, FileTagCache::class],
-    version = 12,
+    entities = [SongOverride::class, Playlist::class, PlaylistSong::class, PlaybackStats::class, FileTagCache::class, FavoriteAlbum::class, FavoriteAlbumArtist::class],
+    version = 13,
     autoMigrations = [
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 6, to = 7),
@@ -189,7 +228,8 @@ interface PlaybackStatsDao {
         AutoMigration(from = 8, to = 9),
         AutoMigration(from = 9, to = 10),
         AutoMigration(from = 10, to = 11),
-        AutoMigration(from = 11, to = 12)
+        AutoMigration(from = 11, to = 12),
+        AutoMigration(from = 12, to = 13)
     ],
     exportSchema = true
 )
@@ -198,6 +238,7 @@ abstract class MusicDatabase : RoomDatabase() {
     abstract fun playlistDao(): PlaylistDao
     abstract fun playbackStatsDao(): PlaybackStatsDao
     abstract fun fileTagDao(): FileTagDao
+    abstract fun favoriteDao(): FavoriteDao
 
     companion object {
         @Volatile
