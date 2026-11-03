@@ -12,6 +12,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.demonlab.lune.data.FavoriteAlbum
+import com.demonlab.lune.data.FavoriteAlbumArtist
 import com.demonlab.lune.data.FileTagCache
 import com.demonlab.lune.data.MusicDatabase
 import com.demonlab.lune.data.PlaylistSong
@@ -39,6 +41,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private val musicProvider = MusicProvider(application)
     private val metadataManager = MetadataManager(application)
     private val settingsManager = SettingsManager.getInstance(application)
+    private val database = MusicDatabase.getDatabase(application)
 
     var allSongs by mutableStateOf<List<Song>>(emptyList())
         private set
@@ -301,6 +304,58 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun syncFavoriteStatusInMemory(songId: Long, isFavorite: Boolean) {
         allSongs = allSongs.map {
             if (it.id == songId) it.copy(isFavorite = isFavorite) else it
+        }
+    }
+
+    // ALBUM AND ALBUM ARTIST FAVORITES
+    var favoriteAlbumKeys by mutableStateOf<Set<String>>(emptySet())
+        private set
+    var favoriteAlbumArtistNames by mutableStateOf<Set<String>>(emptySet())
+        private set
+
+    fun isFavoriteAlbum(albumArtist: String, albumTitle: String): Boolean =
+        com.demonlab.lune.ui.data.Album.keyFor(albumArtist, albumTitle) in favoriteAlbumKeys
+
+    fun isFavoriteAlbumArtist(name: String): Boolean = name.trim() in favoriteAlbumArtistNames
+
+    private fun loadFavorites() {
+        viewModelScope.launch {
+            val albums = withContext(Dispatchers.IO) { database.favoriteDao().getAlbums() }
+            val artists = withContext(Dispatchers.IO) { database.favoriteDao().getAlbumArtists() }
+            favoriteAlbumKeys = albums
+                .map { com.demonlab.lune.ui.data.Album.keyFor(it.albumArtist, it.albumTitle) }
+                .toSet()
+            favoriteAlbumArtistNames = artists.map { it.name.trim() }.toSet()
+        }
+    }
+
+    fun toggleFavoriteAlbum(albumArtist: String, albumTitle: String) {
+        val artist = albumArtist.trim()
+        val title = albumTitle.trim()
+        val key = com.demonlab.lune.ui.data.Album.keyFor(artist, title)
+        val adding = key !in favoriteAlbumKeys
+        favoriteAlbumKeys = if (adding) favoriteAlbumKeys + key else favoriteAlbumKeys - key
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val dao = database.favoriteDao()
+                if (adding) dao.addAlbum(FavoriteAlbum(artist, title))
+                else dao.removeAlbum(FavoriteAlbum(artist, title))
+            }
+        }
+    }
+
+    fun toggleFavoriteAlbumArtist(name: String) {
+        val key = name.trim()
+        if (key.isEmpty()) return
+        val adding = key !in favoriteAlbumArtistNames
+        favoriteAlbumArtistNames = if (adding) favoriteAlbumArtistNames + key
+            else favoriteAlbumArtistNames - key
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val dao = database.favoriteDao()
+                if (adding) dao.addAlbumArtist(FavoriteAlbumArtist(key))
+                else dao.removeAlbumArtist(FavoriteAlbumArtist(key))
+            }
         }
     }
 
@@ -680,6 +735,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         loadSongs()
         loadPlaylists()
         observeStats()
+        loadFavorites()
     }
 
     override fun onCleared() {
