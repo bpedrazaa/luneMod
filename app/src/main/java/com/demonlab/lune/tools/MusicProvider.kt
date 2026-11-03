@@ -72,6 +72,8 @@ class MusicProvider(private val context: Context) {
         // A Settings rescan calls refreshLibrary directly; serialize it with the
         // view model's pass so the same pending files are not read twice.
         private val enrichMutex = Mutex()
+        // Favorite taps come from the main thread; serialize the cache rewrite.
+        private val cacheWriteMutex = Mutex()
     }
 
     private val settingsManager = SettingsManager.getInstance(context)
@@ -124,18 +126,22 @@ class MusicProvider(private val context: Context) {
         }
     }
 
-    fun updateSongInCache(updatedSong: Song) {
-        // A stale cache is thrown away and rebuilt by the next sync; patching it
-        // would persist a list with a single song.
-        if (settingsManager.libraryCacheVersion != CACHE_VERSION) return
-        val songs = getCachedSongs().toMutableList()
-        val idx = songs.indexOfFirst { it.id == updatedSong.id }
-        if (idx >= 0) {
-            songs[idx] = updatedSong
-        } else {
-            songs.add(updatedSong)
+    suspend fun updateSongInCache(updatedSong: Song) {
+        cacheWriteMutex.withLock {
+            withContext(Dispatchers.IO) {
+                // A stale cache is thrown away and rebuilt by the next sync; patching
+                // it would persist a list with a single song.
+                if (settingsManager.libraryCacheVersion != CACHE_VERSION) return@withContext
+                val songs = getCachedSongs().toMutableList()
+                val idx = songs.indexOfFirst { it.id == updatedSong.id }
+                if (idx >= 0) {
+                    songs[idx] = updatedSong
+                } else {
+                    songs.add(updatedSong)
+                }
+                saveToCache(songs)
+            }
         }
-        saveToCache(songs)
     }
 
     private fun hasReadPermission(): Boolean {

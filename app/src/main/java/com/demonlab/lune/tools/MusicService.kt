@@ -450,7 +450,7 @@ class MusicService : MediaLibraryService() {
             ACTION_FAVORITE -> {
                 pm.toggleFavorite(onFavoriteToggled = { updatedSong ->
                     val provider = MusicProvider(this)
-                    provider.updateSongInCache(updatedSong)
+                    serviceScope.launch { provider.updateSongInCache(updatedSong) }
                     showNotification(updatedSong, isPlaying())
                 })
             }
@@ -765,7 +765,7 @@ class MusicService : MediaLibraryService() {
                 ACTION_FAVORITE -> {
                     pm.toggleFavorite(onFavoriteToggled = { updatedSong ->
                         val provider = MusicProvider(applicationContext)
-                        provider.updateSongInCache(updatedSong)
+                        serviceScope.launch { provider.updateSongInCache(updatedSong) }
                         showNotification(updatedSong, isPlaying())
                         updatePlaybackState()
                     })
