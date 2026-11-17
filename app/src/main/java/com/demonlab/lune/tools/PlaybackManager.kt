@@ -1035,14 +1035,26 @@ class PlaybackManager private constructor(private val context: Context) {
     fun getSortedList(list: List<Song>, option: String = sortOption, ascending: Boolean = isSortAscending, caseSensitive: Boolean = false): List<Song> {
         if (option == "CUSTOM") return list
 
-        val comparator = when (option) {
-            "ALPHABETICAL" -> if (caseSensitive) compareBy<Song> { it.title } else compareBy<Song> { it.title.lowercase(java.util.Locale.getDefault()) }
-            "ARTIST" -> if (caseSensitive) compareBy<Song> { it.artist } else compareBy<Song> { it.artist.lowercase(java.util.Locale.getDefault()) }
-            "ALBUM" -> if (caseSensitive) compareBy<Song> { it.album }.thenBy { it.trackNumber }.thenBy { it.title } else compareBy<Song> { it.album.lowercase(java.util.Locale.getDefault()) }.thenBy { it.trackNumber }.thenBy { it.title.lowercase(java.util.Locale.getDefault()) }
+        val comparator: Comparator<Song> = when (option) {
+            "ALPHABETICAL" -> if (caseSensitive) compareBy<Song> { it.title } else compareBy(String.CASE_INSENSITIVE_ORDER) { it.title }
+            "ARTIST" -> if (caseSensitive) compareBy<Song> { it.artist } else compareBy(String.CASE_INSENSITIVE_ORDER) { it.artist }
+            "ALBUM" -> if (caseSensitive) {
+                compareBy<Song> { it.album }.thenBy { it.trackNumber }.thenBy { it.title }
+            } else {
+                Comparator<Song> { a, b ->
+                    val byAlbum = String.CASE_INSENSITIVE_ORDER.compare(a.album, b.album)
+                    if (byAlbum != 0) {
+                        byAlbum
+                    } else {
+                        val byTrack = a.trackNumber.compareTo(b.trackNumber)
+                        if (byTrack != 0) byTrack else String.CASE_INSENSITIVE_ORDER.compare(a.title, b.title)
+                    }
+                }
+            }
             "DURATION" -> compareBy<Song> { it.duration }
             "DATE_ADDED" -> compareBy<Song> { it.dateAdded }
             "TRACK_NUMBER" -> compareBy<Song> { it.trackNumber }
-            else -> if (caseSensitive) compareBy<Song> { it.title } else compareBy<Song> { it.title.lowercase(java.util.Locale.getDefault()) }
+            else -> if (caseSensitive) compareBy<Song> { it.title } else compareBy(String.CASE_INSENSITIVE_ORDER) { it.title }
         }
         
         return if (ascending) {
