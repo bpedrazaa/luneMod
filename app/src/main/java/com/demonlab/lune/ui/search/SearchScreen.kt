@@ -54,6 +54,7 @@ import kotlinx.coroutines.withContext
 data class SearchResults(
     val songs: List<Song>,
     val albumArtistResults: Map<Album, List<Song>>,
+    val trackArtistResults: Map<Album, List<Song>> = emptyMap(),
     val albumResults: Map<Album, List<Song>>,
     val playlistResults: Map<Playlist, List<Song>>
 )
@@ -68,6 +69,7 @@ fun SearchScreen(
     onPlayAll: (List<Song>, Boolean) -> Unit,
     onNavigateToAlbum: (Album) -> Unit,
     onNavigateToAlbumArtist: (String) -> Unit,
+    onNavigateToTrackArtist: (String) -> Unit,
     onNavigateToPlaylist: (Playlist) -> Unit,
     onNavigateToFolder: (String) -> Unit,
     onOptionsClick: (Song) -> Unit,
@@ -87,6 +89,7 @@ fun SearchScreen(
     var showFilterDialog by remember { mutableStateOf(false) }
     var filterSongs by remember { mutableStateOf(true) }
     var filterAlbumArtists by remember { mutableStateOf(true) }
+    var filterTrackArtists by remember { mutableStateOf(true) }
     var filterAlbums by remember { mutableStateOf(true) }
     var filterPlaylists by remember { mutableStateOf(true) }
     val isSearchActive = activePlaylistId == -300L
@@ -96,6 +99,7 @@ fun SearchScreen(
         val hiddenTabs = settings.hiddenSectionTabs
         if ("ALL" in hiddenTabs) filterSongs = false
         if ("ALBUM_ARTISTS" in hiddenTabs) filterAlbumArtists = false
+        if ("ARTISTS" in hiddenTabs) filterTrackArtists = false
         if ("ALBUMS" in hiddenTabs) filterAlbums = false
         if ("PLAYLISTS" in hiddenTabs) filterPlaylists = false
     }
@@ -135,6 +139,7 @@ fun SearchScreen(
 
     val sSectionSongs = stringResource(R.string.search_section_songs)
     val sTabAlbumArtists = stringResource(R.string.tab_album_artists)
+    val sTabTrackArtists = stringResource(R.string.tab_artists)
     val sTabAlbumsReal = stringResource(R.string.tab_albums_real)
     val sFilterTitle = stringResource(R.string.search_filter)
     val sFilterAll = stringResource(R.string.search_filter_all)
@@ -288,6 +293,42 @@ fun SearchScreen(
                                 modifier = Modifier.clickable { onNavigateToAlbumArtist(albumArtist.name) }
                             ) {
                                 Text(albumArtist.name, maxLines = 1, overflow = TextOverflow.Ellipsis, color = blurColors.textColor)
+                            }
+                        }
+                    }
+                }
+
+                if (filterTrackArtists && searchResults.trackArtistResults.isNotEmpty()) {
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = sTabTrackArtists,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (blurColors.hasBlur) Color.White else MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+                    searchResults.trackArtistResults.forEach { (artist, _) ->
+                        item {
+                            ListItem(
+                                colors = ListItemDefaults.colors(
+                                    containerColor = Color.Transparent,
+                                    headlineColor = blurColors.textColor
+                                ),
+                                leadingContent = {
+                                    AsyncImage(
+                                        model = artist.songs.firstOrNull()?.let { it.coverUrl ?: it.uri } ?: R.drawable.ic_launcher_foreground,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(50.dp)
+                                            .clip(RoundedCornerShape(8.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                },
+                                modifier = Modifier.clickable { onNavigateToTrackArtist(artist.name) }
+                            ) {
+                                Text(artist.name, maxLines = 1, overflow = TextOverflow.Ellipsis, color = blurColors.textColor)
                             }
                         }
                     }
@@ -527,6 +568,7 @@ fun SearchScreen(
 
                 if (query.isNotBlank() &&
                     (!filterAlbumArtists || searchResults.albumArtistResults.isEmpty()) &&
+                    (!filterTrackArtists || searchResults.trackArtistResults.isEmpty()) &&
                     (!filterAlbums || searchResults.albumResults.isEmpty()) &&
                     (!filterSongs || searchResults.songs.isEmpty()) &&
                     (!filterPlaylists || searchResults.playlistResults.isEmpty())
@@ -561,6 +603,7 @@ fun SearchScreen(
         val hiddenTabs = settings.hiddenSectionTabs
         val isAllDisabled = sectionCustomizationEnabled && "ALL" in hiddenTabs
         val isAlbumArtistsDisabled = sectionCustomizationEnabled && "ALBUM_ARTISTS" in hiddenTabs
+        val isArtistsDisabled = sectionCustomizationEnabled && "ARTISTS" in hiddenTabs
         val isAlbumsDisabled = sectionCustomizationEnabled && "ALBUMS" in hiddenTabs
         val isPlaylistsDisabled = sectionCustomizationEnabled && "PLAYLISTS" in hiddenTabs
 
@@ -648,6 +691,26 @@ fun SearchScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(8.dp))
+                                    .clickable(enabled = !isArtistsDisabled) { filterTrackArtists = !filterTrackArtists }
+                                    .padding(vertical = 4.dp)
+                            ) {
+                                Checkbox(
+                                    checked = filterTrackArtists,
+                                    enabled = !isArtistsDisabled,
+                                    onCheckedChange = { if (!isArtistsDisabled) filterTrackArtists = it },
+                                    colors = checkboxColors
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    sTabTrackArtists,
+                                    color = if (isArtistsDisabled) blurColors.textSecondaryColor.copy(alpha = 0.4f) else blurColors.textColor
+                                )
+                            }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
                                     .clickable(enabled = !isAlbumsDisabled) { filterAlbums = !filterAlbums }
                                     .padding(vertical = 4.dp)
                             ) {
@@ -701,6 +764,7 @@ fun SearchScreen(
                                 onClick = {
                                     filterSongs = true
                                     filterAlbumArtists = true
+                                    filterTrackArtists = true
                                     filterAlbums = true
                                     filterPlaylists = true
                                 },
@@ -730,6 +794,7 @@ private fun relevanceRank(value: String, query: String): Int {
 private fun emptySearchResults() = SearchResults(
     songs = emptyList(),
     albumArtistResults = emptyMap(),
+    trackArtistResults = emptyMap(),
     albumResults = emptyMap(),
     playlistResults = emptyMap()
 )
@@ -776,6 +841,35 @@ internal fun computeSearchResults(
             ] = artistSongs.filter { it.id in matchedSongIds }
         }
 
+    // Track artists live in the comma separated artist tag, so a featured name
+    // is searchable even when it differs from the album artist.
+    val trackArtistResults = mutableMapOf<Album, List<Song>>()
+    allSongs
+        .flatMap { song ->
+            val albumArtist = song.displayAlbumArtist.trim()
+            song.artist.split(",")
+                .map { it.trim() }
+                .filter { it.isNotBlank() && !it.equals("<unknown>", ignoreCase = true) }
+                .filter { !it.equals(albumArtist, ignoreCase = true) }
+                .map { it to song }
+        }
+        .groupBy({ it.first }, { it.second })
+        .entries
+        .filter { (name, _) -> searchTerms.all { term -> name.normalizeForSearch().contains(term) } }
+        .sortedWith(compareBy({ relevanceRank(it.key, query) }, { it.key.normalizeForSearch() }))
+        .forEach { (artistName, artistSongs) ->
+            trackArtistResults[
+                Album(
+                    id = artistName.hashCode().toLong(),
+                    name = artistName,
+                    artist = "",
+                    albumArtUri = artistSongs.first().albumArtUri,
+                    coverUrl = artistSongs.first().coverUrl,
+                    songs = artistSongs
+                )
+            ] = artistSongs.filter { it.id in matchedSongIds }
+        }
+
     fun matchAlbums(albums: List<Album>): MutableMap<Album, List<Song>> {
         val results = mutableMapOf<Album, List<Song>>()
         albums
@@ -812,6 +906,7 @@ internal fun computeSearchResults(
     return SearchResults(
         songs = matchedSongs,
         albumArtistResults = albumArtistResults,
+        trackArtistResults = trackArtistResults,
         albumResults = albumResults,
         playlistResults = playlistResults
     )

@@ -804,6 +804,25 @@ fun MainScreen(
         onSelectedFolderChange("ALBUM_ARTISTS")
     }
 
+    fun openTrackArtistByName(artistName: String) {
+        val wanted = artistName.trim()
+        val artistSongs = visibleSongs.filter { song ->
+            song.artist.split(",").any { it.trim().equals(wanted, ignoreCase = true) }
+        }
+        if (artistSongs.isEmpty()) return
+        selectedAlbum = Album(
+            id = artistName.hashCode().toLong(),
+            name = artistName,
+            artist = "",
+            albumArtUri = artistSongs.firstOrNull()?.albumArtUri,
+            coverUrl = artistSongs.firstOrNull()?.coverUrl,
+            songs = artistSongs.sortedBy { it.title }
+        )
+        isAlbumView = false
+        onIsPlayerExpandedChange(false)
+        onSelectedFolderChange("ARTISTS")
+    }
+
     val contextId = remember(selectedFolder) {
         when (selectedFolder) {
             "RESUME", "ALL", "ALBUMS", "ARTISTS", "GENRES" -> -100L
@@ -2633,7 +2652,11 @@ fun MainScreen(
                                 visibleSongs.filter { it.genre?.trim().equals(albumRender.name.trim(), ignoreCase = true) }
                             }
                         }
-                        "ARTISTS" -> visibleSongs.filter { it.artist.trim().equals(albumRender.name.trim(), ignoreCase = true) }
+                        "ARTISTS" -> visibleSongs.filter { song ->
+                            val name = albumRender.name.trim()
+                            song.artist.trim().equals(name, ignoreCase = true) ||
+                                song.artist.split(",").any { it.trim().equals(name, ignoreCase = true) }
+                        }
                         "ALBUM_ARTISTS" -> visibleSongs.filter { it.displayAlbumArtist.trim().equals(albumRender.name.trim(), ignoreCase = true) }
                         "ALBUMS" -> {
                             if (!isAlbumView && albumRender.artist.isEmpty()) {
@@ -3111,6 +3134,10 @@ fun MainScreen(
             onNavigateToAlbumArtist = { albumArtistName ->
                 showSearchScreen = false
                 openAlbumArtistByName(albumArtistName)
+            },
+            onNavigateToTrackArtist = { artistName ->
+                showSearchScreen = false
+                openTrackArtistByName(artistName)
             },
             onNavigateToPlaylist = { playlist ->
                 selectedPlaylist = playlist
