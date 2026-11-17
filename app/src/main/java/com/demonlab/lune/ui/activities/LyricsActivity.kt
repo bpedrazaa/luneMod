@@ -189,8 +189,14 @@ fun LyricsScreen(onBack: () -> Unit, isDarkTheme: Boolean = false) {
         if (isBlurActive) {
             // Blurred Background
             Box(modifier = Modifier.fillMaxSize()) {
+                val backdropModel = remember(song.coverUrl, song.uri) {
+                    coil.request.ImageRequest.Builder(context)
+                        .data(song.coverUrl ?: song.uri)
+                        .size(200)
+                        .build()
+                }
                 AsyncImage(
-                    model = song.coverUrl ?: song.uri,
+                    model = backdropModel,
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
@@ -834,7 +840,7 @@ fun LyricsScreen(onBack: () -> Unit, isDarkTheme: Boolean = false) {
                         MiniPlayer(
                             song = song,
                             isPlaying = isPlaying,
-                            progress = currentProgress,
+                            progressProvider = { currentProgress },
                             showWaveform = false,
                             visualizerData = FloatArray(0),
                             currentOutputIcon = playbackManager.currentOutputIcon,

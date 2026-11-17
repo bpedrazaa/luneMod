@@ -37,7 +37,7 @@ fun ResumeScreen(
     bottomPadding: Dp,
     currentSong: Song?,
     isPlaying: Boolean,
-    playbackProgress: Float = 0f,
+    playbackProgress: () -> Float = { 0f },
     hasBlurBackground: Boolean = false,
     isDarkTheme: Boolean = false,
     useCustomControlsColor: Boolean = false,

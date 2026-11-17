@@ -565,7 +565,7 @@ class Lune : AppCompatActivity() {
                     onIsPlayingChange = { /* reactive */ },
                     isPlayerExpanded = isPlayerExpanded,
                     onIsPlayerExpandedChange = { isPlayerExpanded = it },
-                    playbackProgress = playbackProgress,
+                    playbackProgress = { playbackProgress },
                     onPlaybackProgressChange = { playbackProgress = it },
                     hasPermission = hasPermission,
                     playbackManager = playbackManager,
@@ -631,7 +631,7 @@ fun MainScreen(
     onIsPlayingChange: (Boolean) -> Unit,
     isPlayerExpanded: Boolean,
     onIsPlayerExpandedChange: (Boolean) -> Unit,
-    playbackProgress: Float,
+    playbackProgress: () -> Float,
     onPlaybackProgressChange: (Float) -> Unit,
     hasPermission: Boolean,
     playbackManager: PlaybackManager,
@@ -2953,7 +2953,7 @@ fun MainScreen(
                                     MiniPlayer(
                                         song = song,
                                         isPlaying = isPlaying,
-                                        progress = playbackProgress,
+                                        progressProvider = playbackProgress,
                                         showWaveform = playbackManager.isMiniPlayerVisualizerEnabled,
                                         currentOutputIcon = playbackManager.currentOutputIcon,
                                         coverShape = coverShape,
@@ -3038,7 +3038,7 @@ fun MainScreen(
             FullPlayer(
                 song = currentSong,
                 isPlaying = isPlaying,
-                progress = playbackProgress,
+                progressProvider = playbackProgress,
                 onProgressChange = { newProgress -> 
                     onPlaybackProgressChange(newProgress)
                     playbackManager.seekTo(newProgress)
@@ -3575,6 +3575,7 @@ fun UnifiedHeaderPill(
                         val pillBlurRequest = remember(song.id, song.coverUrl) {
                             ImageRequest.Builder(context)
                                 .data(song.coverUrl ?: song.uri)
+                                .size(200)
                                 .crossfade(true)
                                 .build()
                         }

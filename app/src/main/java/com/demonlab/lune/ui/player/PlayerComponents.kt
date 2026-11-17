@@ -652,12 +652,14 @@ private fun ScrollingHeaderLine(
                 Box(measureWidth) { content() }
             }
         } else {
-            val offsetInCycle = if (cycle > 0f) ((offset % cycle) + cycle) % cycle else 0f
             Box(
                 modifier = Modifier.layout { measurable, constraints ->
                     val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity))
                     val layoutWidth = if (constraints.hasBoundedWidth) constraints.maxWidth else placeable.width
-                    layout(layoutWidth, placeable.height) { placeable.placeRelative((-offsetInCycle).roundToInt(), 0) }
+                    layout(layoutWidth, placeable.height) { placeable.placeRelative(0, 0) }
+                }.graphicsLayer {
+                    val c = cycle
+                    translationX = -if (c > 0f) ((offset % c) + c) % c else 0f
                 }
             ) {
                 Box(measureWidth) { content() }
@@ -666,7 +668,10 @@ private fun ScrollingHeaderLine(
                 modifier = Modifier.layout { measurable, constraints ->
                     val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity))
                     val layoutWidth = if (constraints.hasBoundedWidth) constraints.maxWidth else placeable.width
-                    layout(layoutWidth, placeable.height) { placeable.placeRelative((-offsetInCycle + cycle).roundToInt(), 0) }
+                    layout(layoutWidth, placeable.height) { placeable.placeRelative(0, 0) }
+                }.graphicsLayer {
+                    val c = cycle
+                    translationX = if (c > 0f) c - ((offset % c) + c) % c else 0f
                 }
             ) {
                 content()
@@ -849,7 +854,7 @@ fun UnifiedMarqueeHeader(
 fun FullPlayer(
     song: Song,
     isPlaying: Boolean,
-    progress: Float,
+    progressProvider: () -> Float,
     onProgressChange: (Float) -> Unit,
     onTogglePlay: () -> Unit,
     onMinimize: () -> Unit,
@@ -875,6 +880,7 @@ fun FullPlayer(
     expansionFraction: Float = 1f,
     miniCoverBounds: Rect? = null
 ) {
+    val progress = progressProvider()
     val context = LocalContext.current
     val settingsManager = remember { SettingsManager.getInstance(context) }
 
@@ -1004,16 +1010,22 @@ fun FullPlayer(
     val blurContainerColor = if (isDarkTheme) Color.Black.copy(alpha = 0.55f) else Color.Black.copy(alpha = 0.35f)
     val blurPlayContainerColor = if (isDarkTheme) Color.Black.copy(alpha = 0.70f) else Color.Black.copy(alpha = 0.50f)
 
-    val infiniteSpinTransition = rememberInfiniteTransition(label = "PlayerCoverSpin")
-    val spinRotation by infiniteSpinTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(12000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "SpinAnimation"
-    )
+    val spinActive = coverShape == 2 && coverSpin && isPlaying
+    val spinRotation = if (spinActive) {
+        val spinTransition = rememberInfiniteTransition(label = "PlayerCoverSpin")
+        val rotation by spinTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(12000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "SpinAnimation"
+        )
+        rotation
+    } else {
+        0f
+    }
 
     // Animación de rebote (bounce) en la carátula al pasar o regresar de canción
     val coroutineScope = rememberCoroutineScope()
@@ -2662,7 +2674,7 @@ fun ScallopPlayPauseButtonWithProgress(
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
-        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        animationSpec = tween(durationMillis = 500, easing = LinearEasing),
         label = "WavyProgress"
     )
 
@@ -2755,7 +2767,7 @@ fun ScallopPlayPauseButtonWithProgress(
 fun MiniPlayer(
     song: Song,
     isPlaying: Boolean,
-    progress: Float = 0f,
+    progressProvider: () -> Float = { 0f },
     showWaveform: Boolean,
     visualizerData: FloatArray = remember { FloatArray(0) },
     currentOutputIcon: ImageVector,
@@ -2779,16 +2791,23 @@ fun MiniPlayer(
     onMinimize: (() -> Unit)? = null,
     onCoverPositioned: ((Rect) -> Unit)? = null
 ) {
-    val infiniteSpinTransition = rememberInfiniteTransition(label = "MiniPlayerSpin")
-    val spinRotation by infiniteSpinTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(12000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "SpinAnimation"
-    )
+    val progress = progressProvider()
+    val spinActive = coverShape == 2 && coverSpin && isPlaying
+    val spinRotation = if (spinActive) {
+        val spinTransition = rememberInfiniteTransition(label = "MiniPlayerSpin")
+        val rotation by spinTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(12000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "SpinAnimation"
+        )
+        rotation
+    } else {
+        0f
+    }
 
     val miniContext = LocalContext.current
     val blurContainerColorMini = if (isDarkTheme) Color.Black.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.4f)
@@ -3133,16 +3152,22 @@ fun MiniPlayerMinimized(
         )
     }
 
-    val infiniteSpinTransition = rememberInfiniteTransition(label = "MiniSpin")
-    val spinRotation by infiniteSpinTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(12000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "SpinAnim"
-    )
+    val spinActive = coverShape == 2 && coverSpin && isPlaying
+    val spinRotation = if (spinActive) {
+        val spinTransition = rememberInfiniteTransition(label = "MiniSpin")
+        val rotation by spinTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(12000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "SpinAnim"
+        )
+        rotation
+    } else {
+        0f
+    }
 
     Box(
         modifier = modifier.onGloballyPositioned { coordinates ->

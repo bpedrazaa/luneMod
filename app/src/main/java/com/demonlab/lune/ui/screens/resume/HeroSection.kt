@@ -51,7 +51,7 @@ fun HeroSection(
     isDarkTheme: Boolean = false,
     useCustomControlsColor: Boolean = false,
     controlsColorPalette: Int = 0,
-    playbackProgress: Float = 0f,
+    playbackProgress: () -> Float = { 0f },
     onContinueListening: () -> Unit,
     onPlayToggle: () -> Unit,
 ) {
@@ -366,7 +366,7 @@ private fun TopStatsCardContent(
 private fun ContinueListeningCard(
     song: Song,
     isPlaying: Boolean,
-    playbackProgress: Float = 0f,
+    playbackProgress: () -> Float = { 0f },
     hasBlurBackground: Boolean = false,
     isDarkTheme: Boolean = false,
     useCustomControlsColor: Boolean = false,
@@ -426,7 +426,7 @@ private fun ContinueListeningCard(
             Spacer(modifier = Modifier.width(8.dp))
             ScallopPlayPauseButtonWithProgress(
                 isPlaying = isPlaying,
-                progress = playbackProgress,
+                progress = playbackProgress(),
                 onClick = onPlayToggle,
                 hasBlurBackground = hasBlurBackground,
                 useCustomControlsColor = useCustomControlsColor,
