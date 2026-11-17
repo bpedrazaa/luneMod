@@ -1563,6 +1563,26 @@ class PlaybackManager private constructor(private val context: Context) {
         }
     }
 
+    fun addToQueue(song: Song): Boolean {
+        if (activePlaylist.isEmpty()) return false
+        if (activePlaylist.any { it.id == song.id }) return false
+        val mutable = activePlaylist.toMutableList()
+        mutable.add(song)
+        activePlaylist = mutable
+
+        if (queueSections.isNotEmpty()) {
+            val sections = queueSections.toMutableList()
+            val last = sections[sections.lastIndex]
+            sections[sections.lastIndex] = last.copy(count = last.count + 1)
+            queueSections = sections
+        }
+
+        if (isShuffle && shuffledIndices.size == activePlaylist.size - 1) {
+            shuffledIndices = shuffledIndices + (activePlaylist.size - 1)
+        }
+        return true
+    }
+
     fun reorderQueueForSong(song: Song, moveToFront: Boolean) {
         val current = currentSong ?: return
         if (moveToFront) {

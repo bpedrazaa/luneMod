@@ -195,6 +195,46 @@ fun SongOptionsBottomSheet(
                     }
                 }
 
+                if (isPlayingOrLoaded) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 1.dp)
+                            .bounceClick(),
+                        shape = RoundedCornerShape(4.dp),
+                        color = blurColors.itemContainerColor,
+                        border = blurColors.itemBorderColor?.let { BorderStroke(1.dp, it) }
+                    ) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            leadingContent = {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (blurColors.hasBlur) blurColors.primaryTint.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.PlaylistPlay,
+                                            contentDescription = null,
+                                            tint = if (blurColors.hasBlur) blurColors.primaryTint else MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            },
+                            modifier = Modifier.clickable {
+                                onDismiss()
+                                val added = playbackManager.addToQueue(song)
+                                val message = if (added) R.string.mod_add_to_queue else R.string.mod_already_in_queue
+                                Toast.makeText(context, context.getString(message) + ": ${song.title}", Toast.LENGTH_SHORT).show()
+                            }
+                        ) {
+                            Text(stringResource(R.string.mod_add_to_queue), color = blurColors.textColor)
+                        }
+                    }
+                }
+
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()

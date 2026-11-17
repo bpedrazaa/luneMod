@@ -4,6 +4,8 @@
     <string name="mod_app_name">Lune Mod</string>
     <string name="mod_open_album">Open album</string>
     <string name="mod_open_album_artist">Open album artist</string>
+    <string name="mod_add_to_queue">Add to queue</string>
+    <string name="mod_already_in_queue">Already in queue</string>
     <string name="mod_info_title">Song info</string>
     <string name="mod_info_short">Info</string>
     <string name="mod_info_album_artist">Album artist</string>
