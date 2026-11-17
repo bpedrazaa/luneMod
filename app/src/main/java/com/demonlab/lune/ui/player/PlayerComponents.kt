@@ -113,6 +113,7 @@ import com.demonlab.lune.tools.toArtwork
 import com.demonlab.lune.ui.data.Album
 import com.demonlab.lune.ui.components.SongCoverImage
 import com.demonlab.lune.ui.utils.firstLetter
+import com.demonlab.lune.ui.utils.copyToClipboard
 import com.demonlab.lune.ui.components.PagerFastScrollbar
 import com.demonlab.lune.ui.components.VinylRecordAsyncCover
 import com.demonlab.lune.ui.components.WaveformVisualizer
@@ -484,6 +485,7 @@ private fun HeaderChip(
     isCompact: Boolean,
     onClick: (() -> Unit)? = null,
     onClickLabel: String? = null,
+    onLongClick: (() -> Unit)? = null,
     leadingIcon: ImageVector? = null
 ) {
     val container = when (style) {
@@ -519,10 +521,14 @@ private fun HeaderChip(
     Surface(
         color = container,
         shape = RoundedCornerShape(percent = 50),
-        modifier = if (onClick != null) {
+        modifier = if (onClick != null || onLongClick != null) {
             Modifier
                 .bounceClick(0.95f)
-                .clickable(onClickLabel = onClickLabel, onClick = onClick)
+                .combinedClickable(
+                    onClickLabel = onClickLabel,
+                    onLongClick = onLongClick,
+                    onClick = onClick ?: {}
+                )
         } else {
             Modifier
         }
@@ -704,6 +710,13 @@ fun UnifiedMarqueeHeader(
         val infoGap = if (isCompact) 2.dp else 10.dp
         val chipSpacing = 6.dp
 
+        val context = LocalContext.current
+        val titleLabel = stringResource(R.string.edit_title)
+        val albumLabel = stringResource(R.string.edit_album)
+        val artistLabel = stringResource(R.string.edit_artist)
+        val albumArtistLabel = stringResource(R.string.mod_info_album_artist)
+        val positionLabel = stringResource(R.string.sort_track_number)
+
         // Position in the album, from the file tag. Both halves have to be known
         // for the chip to say anything useful.
         val trackPosition = if (song.trackNumber > 0 && song.totalTracks > 0) {
@@ -736,7 +749,11 @@ fun UnifiedMarqueeHeader(
                     maxLines = 1,
                     softWrap = false,
                     textAlign = TextAlign.Start,
-                    color = if (useBlurControls) Color.White else MaterialTheme.colorScheme.onSurface
+                    color = if (useBlurControls) Color.White else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.combinedClickable(
+                        onClick = {},
+                        onLongClick = { copyToClipboard(context, titleLabel, song.title) }
+                    )
                 )
             }
 
@@ -757,6 +774,7 @@ fun UnifiedMarqueeHeader(
                             isCompact = isCompact,
                             onClick = openAlbum,
                             onClickLabel = openAlbumLabel,
+                            onLongClick = { copyToClipboard(context, albumLabel, song.album) },
                             leadingIcon = Icons.Outlined.Album
                         )
                         if (trackPosition != null) {
@@ -768,7 +786,8 @@ fun UnifiedMarqueeHeader(
                                 isAmoled = isAmoled,
                                 isCompact = isCompact,
                                 onClick = openAlbum,
-                                onClickLabel = openAlbumLabel
+                                onClickLabel = openAlbumLabel,
+                                onLongClick = { copyToClipboard(context, positionLabel, trackPosition) }
                             )
                         }
                     }
@@ -786,7 +805,8 @@ fun UnifiedMarqueeHeader(
                         isAmoled = isAmoled,
                         isCompact = isCompact,
                         onClick = openAlbumArtist,
-                        onClickLabel = openAlbumArtistLabel
+                        onClickLabel = openAlbumArtistLabel,
+                        onLongClick = { copyToClipboard(context, albumArtistLabel, song.displayAlbumArtist) }
                     )
                 }
             }
@@ -800,7 +820,8 @@ fun UnifiedMarqueeHeader(
                         useBlurControls = useBlurControls,
                         blurContainerColor = blurContainerColor,
                         isAmoled = isAmoled,
-                        isCompact = isCompact
+                        isCompact = isCompact,
+                        onLongClick = { copyToClipboard(context, artistLabel, featuredLine) }
                     )
                 }
             }
