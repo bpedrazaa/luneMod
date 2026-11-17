@@ -651,6 +651,7 @@ fun CustomizationScreen(
                             onCheckedChange = {
                                 isCrossfadeCustomDuration = it
                                 settingsManager.isCrossfadeCustomDuration = it
+                                if (it && !playbackManager.isCrossfade) playbackManager.toggleCrossfade()
                             },
                             thumbContent = {
                                 Icon(
@@ -691,6 +692,7 @@ fun CustomizationScreen(
                                 onValueChange = {
                                     crossfadeDurationSeconds = it.toInt()
                                     settingsManager.crossfadeDurationSeconds = it.toInt()
+                                    if (!playbackManager.isCrossfade) playbackManager.toggleCrossfade()
                                 },
                                 valueRange = 1f..12f,
                                 steps = 10,
