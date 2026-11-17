@@ -2419,7 +2419,7 @@ fun FullPlayer(
                                                     if (file.exists()) {
                                                         val contentUri = FileProvider.getUriForFile(
                                                             context,
-                                                            "com.demonlab.lune.fileprovider",
+                                                            "${context.packageName}.fileprovider",
                                                             file
                                                         )
                                                         val shareIntent = Intent(Intent.ACTION_SEND).apply {

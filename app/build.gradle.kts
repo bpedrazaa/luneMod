@@ -26,7 +26,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.demonlab.lune"
+        applicationId = "com.demonlab.lune.bpedrazaa"
         minSdk = 24
         targetSdk = 37
         versionCode = 16
@@ -68,6 +68,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
