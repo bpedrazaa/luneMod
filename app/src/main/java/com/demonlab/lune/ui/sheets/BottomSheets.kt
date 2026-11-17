@@ -195,7 +195,7 @@ fun SongOptionsBottomSheet(
                     }
                 }
 
-                if (isPlayingOrLoaded) {
+                if (isPlayingOrLoaded && playbackManager.activePlaylist.isNotEmpty()) {
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
