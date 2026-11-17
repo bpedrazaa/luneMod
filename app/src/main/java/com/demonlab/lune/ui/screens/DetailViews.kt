@@ -80,6 +80,7 @@ fun PlaylistDetailView(
     songs: List<Song>,
     sortOption: String,
     isSortAscending: Boolean,
+    isCaseSensitive: Boolean = false,
     onBack: () -> Unit,
     onSongClick: (Song, List<Song>) -> Unit,
     onOptionsClick: (Song) -> Unit,
@@ -105,8 +106,8 @@ fun PlaylistDetailView(
     val activeControlsPrimary = getControlsPrimaryColor(useCustomControlsColor, controlsColorPalette)
     val stretchProgress = remember { Animatable(0f) }
     
-    val sortedSongs = remember(songs, sortOption, isSortAscending) {
-        playbackManager.getSortedList(songs, sortOption, isSortAscending)
+    val sortedSongs = remember(songs, sortOption, isSortAscending, isCaseSensitive) {
+        playbackManager.getSortedList(songs, sortOption, isSortAscending, isCaseSensitive)
     }
 
     val isCustomOrder = sortOption == "CUSTOM"
@@ -716,6 +717,7 @@ fun AlbumDetailView(
     songs: List<Song>,
     sortOption: String,
     isSortAscending: Boolean,
+    isCaseSensitive: Boolean = false,
     onBack: () -> Unit,
     onSongClick: (Song, List<Song>) -> Unit,
     onOptionsClick: (Song) -> Unit,
@@ -807,8 +809,8 @@ fun AlbumDetailView(
     // An album is a sequence. Keep the user's chosen sort, but the default
     // alphabetical one sorts by album and then track instead of by title.
     val effectiveSortOption = if (sortOption == "ALPHABETICAL") "ALBUM" else sortOption
-    val sortedSongs = remember(displayedSongs, effectiveSortOption, isSortAscending) {
-        playbackManager.getSortedList(displayedSongs, effectiveSortOption, isSortAscending)
+    val sortedSongs = remember(displayedSongs, effectiveSortOption, isSortAscending, isCaseSensitive) {
+        playbackManager.getSortedList(displayedSongs, effectiveSortOption, isSortAscending, isCaseSensitive)
     }
     
     val headerAlpha by remember {
@@ -1584,6 +1586,7 @@ fun FolderDetailView(
     songs: List<Song>,
     sortOption: String,
     isSortAscending: Boolean,
+    isCaseSensitive: Boolean = false,
     onBack: () -> Unit,
     onSongClick: (Song, List<Song>) -> Unit,
     onOptionsClick: (Song) -> Unit,
@@ -1614,8 +1617,8 @@ fun FolderDetailView(
         CategoryCoverManager.getCustomCovers(context, "FOLDERS", folderName)
     }
 
-    val sortedSongs = remember(songs, sortOption, isSortAscending) {
-        playbackManager.getSortedList(songs, sortOption, isSortAscending)
+    val sortedSongs = remember(songs, sortOption, isSortAscending, isCaseSensitive) {
+        playbackManager.getSortedList(songs, sortOption, isSortAscending, isCaseSensitive)
     }
 
     val headerAlpha by remember {

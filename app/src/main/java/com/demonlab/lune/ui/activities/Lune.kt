@@ -2577,6 +2577,7 @@ fun MainScreen(
                     songs = playlistSongs,
                     sortOption = activeSortOption,
                     isSortAscending = activeIsSortAscending,
+                    isCaseSensitive = activeIsCaseSensitive,
                     onBack = { selectedPlaylist = null },
                     onSongClick = { song, sortedList ->
                         playbackManager.play(song, sortedList, playListRender.id, playListRender.name, category = "PLAYLISTS")
@@ -2668,6 +2669,7 @@ fun MainScreen(
                     songs = songsToDisplay,
                     sortOption = activeSortOption,
                     isSortAscending = activeIsSortAscending,
+                    isCaseSensitive = activeIsCaseSensitive,
                     onBack = { selectedAlbum = null },
                     onSongClick = { song, sortedList ->
                         playbackManager.play(song, sortedList, albumRender.id, category = currentCategory)
@@ -2738,6 +2740,7 @@ fun MainScreen(
                     songs = folderSongs,
                     sortOption = activeSortOption,
                     isSortAscending = activeIsSortAscending,
+                    isCaseSensitive = activeIsCaseSensitive,
                     onBack = { selectedFolderItem = null },
                     onSongClick = { song, sortedList ->
                         playbackManager.play(song, sortedList, folderName.hashCode().toLong(), category = "FOLDERS")
