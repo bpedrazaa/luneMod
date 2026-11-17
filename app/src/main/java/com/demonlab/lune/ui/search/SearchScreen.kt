@@ -862,11 +862,18 @@ internal fun computeSearchResults(
     val trackArtistResults = mutableMapOf<Album, List<Song>>()
     allSongs
         .flatMap { song ->
-            val albumArtist = song.displayAlbumArtist.trim()
+            val albumArtist = song.displayAlbumArtist.trim().lowercase(java.util.Locale.ROOT)
             song.artist.split(",")
                 .map { it.trim() }
                 .filter { it.isNotBlank() && !it.equals("<unknown>", ignoreCase = true) }
-                .filter { !it.equals(albumArtist, ignoreCase = true) }
+                .filter { token ->
+                    val normalizedToken = token.lowercase(java.util.Locale.ROOT)
+                    // A name with a comma inside, like "Tyler, The Creator", arrives
+                    // split; its pieces are a prefix or suffix of the album artist.
+                    normalizedToken != albumArtist &&
+                        !albumArtist.startsWith("$normalizedToken,") &&
+                        !albumArtist.endsWith(", $normalizedToken")
+                }
                 .map { it to song }
         }
         .groupBy({ it.first }, { it.second })
@@ -874,16 +881,17 @@ internal fun computeSearchResults(
         .filter { (name, _) -> searchTerms.all { term -> name.normalizeForSearch().contains(term) } }
         .sortedWith(compareBy({ relevanceRank(it.key, query) }, { it.key.normalizeForSearch() }))
         .forEach { (artistName, artistSongs) ->
+            val uniqueSongs = artistSongs.distinctBy { it.id }
             trackArtistResults[
                 Album(
                     id = artistName.hashCode().toLong(),
                     name = artistName,
                     artist = "",
-                    albumArtUri = artistSongs.first().albumArtUri,
-                    coverUrl = artistSongs.first().coverUrl,
-                    songs = artistSongs
+                    albumArtUri = uniqueSongs.first().albumArtUri,
+                    coverUrl = uniqueSongs.first().coverUrl,
+                    songs = uniqueSongs
                 )
-            ] = artistSongs.filter { it.id in matchedSongIds }
+            ] = uniqueSongs.filter { it.id in matchedSongIds }
         }
 
     fun matchAlbums(albums: List<Album>): MutableMap<Album, List<Song>> {
