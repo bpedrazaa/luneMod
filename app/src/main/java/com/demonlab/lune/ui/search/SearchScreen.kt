@@ -490,7 +490,11 @@ fun SearchScreen(
                             }
                         }
                     }
-                    itemsIndexed(searchResults.songs) { index, song ->
+                    itemsIndexed(
+                        searchResults.songs,
+                        key = { _, song -> song.id },
+                        contentType = { _, _ -> "song" }
+                    ) { index, song ->
                         val isFirst = index == 0
                         val isLast = index == searchResults.songs.lastIndex
                         val isCurrent = song.id == currentlyPlayingId
@@ -538,7 +542,11 @@ fun SearchScreen(
                                     Text(playlist.name, maxLines = 1, overflow = TextOverflow.Ellipsis, color = blurColors.textColor)
                                 }
                             }
-                            itemsIndexed(matchingSongs) { index, song ->
+                            itemsIndexed(
+                                matchingSongs,
+                                key = { _, song -> song.id },
+                                contentType = { _, _ -> "song" }
+                            ) { index, song ->
                                 val isFirst = index == 0
                                 val isLast = index == matchingSongs.lastIndex
                                 val isCurrent = song.id == currentlyPlayingId
