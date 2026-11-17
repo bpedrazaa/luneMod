@@ -469,15 +469,15 @@ class LuneAiEngine private constructor(private val context: Context) {
         engineScope.launch {
             try {
                 profileCache.clear()
+                // One affinity sort shared by every mix below.
+                val byAffinity = allSongs.sortedByDescending { getSongAffinity(it.id) }
                 val generated = mutableListOf<AiMix>()
                 val currentTime = TimeOfDay.current()
                 val dayType = DayType.current()
                 val isWeekend = dayType == DayType.WEEKEND
 
                 // 1. Daily AI Flow (Mix del Día)
-                val dailySongs = allSongs
-                .sortedByDescending { getSongAffinity(it.id) }
-                .take(32)
+                val dailySongs = byAffinity.take(32)
             if (dailySongs.size >= 4) {
                 generated.add(
                     AiMix(
@@ -511,10 +511,10 @@ class LuneAiEngine private constructor(private val context: Context) {
             }
 
             // 3. Energy Boost (Ritmo y Cardio)
-            val filteredEnergy = allSongs.filter { song ->
+            val filteredEnergy = byAffinity.filter { song ->
                 val profile = profileSong(song)
                 profile.energyScore > 0.62f || (song.duration < 230_000L && getSongAffinity(song.id) > 8f)
-            }.sortedByDescending { getSongAffinity(it.id) }.take(25)
+            }.take(25)
 
             val energySongs = if (filteredEnergy.size < 15 && allSongs.size >= 4) {
                 val existingIds = filteredEnergy.map { it.id }.toSet()
@@ -542,10 +542,10 @@ class LuneAiEngine private constructor(private val context: Context) {
             }
 
             // 4. Chill & Focus / Relajación
-            val filteredChill = allSongs.filter { song ->
+            val filteredChill = byAffinity.filter { song ->
                 val profile = profileSong(song)
                 profile.energyScore < 0.45f || profile.isFocusFriendly
-            }.sortedByDescending { getSongAffinity(it.id) }.take(25)
+            }.take(25)
 
             val chillSongs = if (filteredChill.size < 15 && allSongs.size >= 4) {
                 val existingIds = filteredChill.map { it.id }.toSet()

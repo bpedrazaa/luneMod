@@ -784,11 +784,13 @@ fun SearchScreen(
 private fun relevanceRank(value: String, query: String): Int {
     val name = value.normalizeForSearch()
     val search = query.normalizeForSearch()
-    return when {
-        name == search -> 0
-        name.startsWith(search) -> 1
-        else -> 2
-    }
+    return rankOf(name, search)
+}
+
+private fun rankOf(normalizedName: String, normalizedQuery: String): Int = when {
+    normalizedName == normalizedQuery -> 0
+    normalizedName.startsWith(normalizedQuery) -> 1
+    else -> 2
 }
 
 private fun emptySearchResults() = SearchResults(
@@ -809,13 +811,19 @@ internal fun computeSearchResults(
     val searchTerms = query.normalizeForSearch().split(Regex("\\s+")).filter { it.isNotBlank() }
     if (searchTerms.isEmpty()) return emptySearchResults()
 
+    // Normalize each title once.
+    val normalizedQuery = query.normalizeForSearch()
+    val normalizedTitles = HashMap<Long, String>(allSongs.size)
+    allSongs.forEach { normalizedTitles[it.id] = it.title.normalizeForSearch() }
+
     // Songs match their own title only. Artist and album have their own groups.
     val matchedSongs = allSongs
-        .filter { song ->
-            val normalizedTitle = song.title.normalizeForSearch()
-            searchTerms.all { term -> normalizedTitle.contains(term) }
-        }
-        .sortedWith(compareBy({ relevanceRank(it.title, query) }, { it.title.normalizeForSearch() }))
+        .asSequence()
+        .map { it to (normalizedTitles[it.id] ?: it.title.normalizeForSearch()) }
+        .filter { (_, normalizedTitle) -> searchTerms.all { term -> normalizedTitle.contains(term) } }
+        .sortedWith(compareBy({ rankOf(it.second, normalizedQuery) }, { it.second }))
+        .map { it.first }
+        .toList()
     val matchedSongIds = matchedSongs.mapTo(HashSet()) { it.id }
 
     // Album artists match their own name. A track title or a featured artist

@@ -80,6 +80,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -161,9 +162,11 @@ fun AppBlurBackdrop(
                     .blur(80.dp)
                     .alpha(if (isDarkTheme) 0.35f else 0.45f)
             ) {
-                val req = remember(currentSong.id, currentSong.coverUrl) {
+                val backdropPx = with(LocalDensity.current) { 96.dp.roundToPx() }
+                val req = remember(currentSong.id, currentSong.coverUrl, backdropPx) {
                     coil.request.ImageRequest.Builder(context)
                         .data(currentSong.coverUrl ?: currentSong.albumArtUri ?: currentSong.uri)
+                        .size(backdropPx)
                         .crossfade(true)
                         .build()
                 }
