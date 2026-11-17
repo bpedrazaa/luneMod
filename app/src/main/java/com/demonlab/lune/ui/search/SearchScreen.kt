@@ -492,7 +492,7 @@ fun SearchScreen(
                     }
                     itemsIndexed(
                         searchResults.songs,
-                        key = { _, song -> song.id },
+                        key = { _, song -> "search_song_${song.id}" },
                         contentType = { _, _ -> "song" }
                     ) { index, song ->
                         val isFirst = index == 0
@@ -544,7 +544,7 @@ fun SearchScreen(
                             }
                             itemsIndexed(
                                 matchingSongs,
-                                key = { _, song -> song.id },
+                                key = { _, song -> "playlist_song_${playlist.id}_${song.id}" },
                                 contentType = { _, _ -> "song" }
                             ) { index, song ->
                                 val isFirst = index == 0
@@ -862,26 +862,26 @@ internal fun computeSearchResults(
     val trackArtistResults = mutableMapOf<Album, List<Song>>()
     allSongs
         .flatMap { song ->
-            val albumArtist = song.displayAlbumArtist.trim().lowercase(java.util.Locale.ROOT)
+            val albumArtistParts = song.displayAlbumArtist.trim().lowercase(java.util.Locale.ROOT)
+                .split(",")
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .toSet()
+            // A name with a comma inside, like "Tyler, The Creator", arrives split;
+            // every piece of the album artist is excluded.
             song.artist.split(",")
                 .map { it.trim() }
                 .filter { it.isNotBlank() && !it.equals("<unknown>", ignoreCase = true) }
-                .filter { token ->
-                    val normalizedToken = token.lowercase(java.util.Locale.ROOT)
-                    // A name with a comma inside, like "Tyler, The Creator", arrives
-                    // split; its pieces are a prefix or suffix of the album artist.
-                    normalizedToken != albumArtist &&
-                        !albumArtist.startsWith("$normalizedToken,") &&
-                        !albumArtist.endsWith(", $normalizedToken")
-                }
+                .filter { it.lowercase(java.util.Locale.ROOT) !in albumArtistParts }
                 .map { it to song }
         }
-        .groupBy({ it.first }, { it.second })
+        .groupBy({ it.first.normalizeForSearch() })
         .entries
-        .filter { (name, _) -> searchTerms.all { term -> name.normalizeForSearch().contains(term) } }
-        .sortedWith(compareBy({ relevanceRank(it.key, query) }, { it.key.normalizeForSearch() }))
-        .forEach { (artistName, artistSongs) ->
-            val uniqueSongs = artistSongs.distinctBy { it.id }
+        .filter { (key, _) -> searchTerms.all { term -> key.contains(term) } }
+        .sortedWith(compareBy({ rankOf(it.key, normalizedQuery) }, { it.key }))
+        .forEach { (_, pairs) ->
+            val artistName = pairs.first().first
+            val uniqueSongs = pairs.map { it.second }.distinctBy { it.id }
             trackArtistResults[
                 Album(
                     id = artistName.hashCode().toLong(),
