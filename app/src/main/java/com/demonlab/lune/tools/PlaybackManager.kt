@@ -1014,9 +1014,12 @@ class PlaybackManager private constructor(private val context: Context) {
                cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
     }
 
-    fun setSortSettings(option: String, ascending: Boolean) {
+    private var sortCaseSensitive = false
+
+    fun setSortSettings(option: String, ascending: Boolean, caseSensitive: Boolean = false) {
         sortOption = option
         isSortAscending = ascending
+        sortCaseSensitive = caseSensitive
         settings.sortOption = option
         settings.isSortAscending = ascending
         
@@ -1025,7 +1028,7 @@ class PlaybackManager private constructor(private val context: Context) {
 
     fun resortActivePlaylist() {
         if (activePlaylist.isNotEmpty()) {
-            activePlaylist = getSortedList(activePlaylist)
+            activePlaylist = getSortedList(activePlaylist, sortOption, isSortAscending, sortCaseSensitive)
             if (isShuffle) {
                 updateShuffledQueue()
             }

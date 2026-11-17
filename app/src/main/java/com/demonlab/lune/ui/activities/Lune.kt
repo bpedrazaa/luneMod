@@ -3245,7 +3245,7 @@ fun MainScreen(
                 settingsManager.setIsSortAscending(currentSortKey, ascending)
                 settingsManager.setIsCaseSensitiveSort(currentSortKey, caseSensitive)
                 if (playbackManager.activePlaylistId == activeContextId) {
-                    playbackManager.setSortSettings(option, ascending)
+                    playbackManager.setSortSettings(option, ascending, caseSensitive)
                 }
             },
             onDismiss = { showSortSheet = false }
