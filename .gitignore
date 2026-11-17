@@ -39,7 +39,7 @@ com_crashlytics_export_strings.xml
 
 # Secrets
 secrets.properties
-keystore.properties
+/keystore.properties
 
 # VsCode
 .vscode/

@@ -5,7 +5,9 @@ import java.util.Properties
 val keystorePropertiesFile = layout.projectDirectory.file("../keystore.properties").asFile
 val keystoreProperties = Properties()
 
-if (keystorePropertiesFile.exists()) {
+val hasKeystoreProperties = keystorePropertiesFile.exists()
+
+if (hasKeystoreProperties) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
@@ -42,10 +44,17 @@ android {
             ?: file(it).takeIf { f -> f.exists() && f.length() > 0 }
     }
 
-    val isSigningConfigured = keystoreFile != null &&
-        !storePassword.isNullOrBlank() &&
-        !keyAlias.isNullOrBlank() &&
-        !keyPassword.isNullOrBlank()
+    if (hasKeystoreProperties) {
+        if (keystoreFile == null) {
+            throw GradleException("keystore.properties is present but storeFile is missing or unreadable: $storePath")
+        }
+        if (storePassword.isNullOrBlank() || keyAlias.isNullOrBlank() || keyPassword.isNullOrBlank()) {
+            throw GradleException("keystore.properties is present but storePassword, keyAlias or keyPassword is blank")
+        }
+    }
+
+    // Unsigned when no properties file exists.
+    val isSigningConfigured = hasKeystoreProperties
 
     signingConfigs {
         create("release") {
@@ -69,7 +78,7 @@ android {
             signingConfig = if (isSigningConfigured) {
                 signingConfigs.getByName("release")
             } else {
-                signingConfigs.getByName("debug")
+                null
             }
         }
     }
