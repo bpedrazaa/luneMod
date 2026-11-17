@@ -452,7 +452,7 @@ fun SearchScreen(
                     itemsIndexed(searchResults.songs) { index, song ->
                         val isFirst = index == 0
                         val isLast = index == searchResults.songs.lastIndex
-                        val isCurrent = song.id == currentlyPlayingId && activeCategory == "ALL"
+                        val isCurrent = song.id == currentlyPlayingId
                         SongItem(
                             isFirst = isFirst,
                             isLast = isLast,
@@ -500,7 +500,7 @@ fun SearchScreen(
                             itemsIndexed(matchingSongs) { index, song ->
                                 val isFirst = index == 0
                                 val isLast = index == matchingSongs.lastIndex
-                                val isCurrent = song.id == currentlyPlayingId && activeCategory == "PLAYLISTS" && activePlaylistId == playlist.id
+                                val isCurrent = song.id == currentlyPlayingId
                                 SongItem(
                                     isFirst = isFirst,
                                     isLast = isLast,

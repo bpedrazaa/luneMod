@@ -2551,7 +2551,7 @@ fun MainScreen(
                         showOptionsSheet = true
                     },
                     onSortClick = { showSortSheet = true },
-                    currentlyPlayingId = if (playbackManager.activePlaylistId == playListRender.id) currentSong?.id else null,
+                    currentlyPlayingId = currentSong?.id,
                     bottomPadding = bottomPadding,
                     viewModel = musicViewModel,
                     onFavoriteClick = { song ->
@@ -2642,7 +2642,7 @@ fun MainScreen(
                         showOptionsSheet = true
                     },
                     onSortClick = { showSortSheet = true },
-                    currentlyPlayingId = if (playbackManager.activePlaylistId == albumRender.id) currentSong?.id else null,
+                    currentlyPlayingId = currentSong?.id,
                     bottomPadding = bottomPadding,
                     onFavoriteClick = { song ->
                         playbackManager.toggleFavorite(song)?.let { updated ->
@@ -2712,7 +2712,7 @@ fun MainScreen(
                         showOptionsSheet = true
                     },
                     onSortClick = { showSortSheet = true },
-                    currentlyPlayingId = if (playbackManager.activePlaylistId == folderName.hashCode().toLong()) currentSong?.id else null,
+                    currentlyPlayingId = currentSong?.id,
                     bottomPadding = bottomPadding,
                     onFavoriteClick = { song ->
                         playbackManager.toggleFavorite(song)?.let { updated ->
