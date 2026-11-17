@@ -2401,7 +2401,7 @@ fun MainScreen(
                                             ) { index, song ->
                                                 SongGridItem(
                                                     song = song,
-                                                    currentlyPlaying = playbackManager.currentSong?.id == song.id && playbackManager.activePlaylistId == pageContextId,
+                                                    currentlyPlaying = playbackManager.currentSong?.id == song.id,
                                                     isPlaying = isPlaying,
                                                     hasBlurBackground = hasBlurBackgroundMini,
                                                     useCustomControlsColor = useCustomControlsColor,
@@ -2442,7 +2442,7 @@ fun MainScreen(
                                                     isFirst = isFirst,
                                                     isLast = isLast,
                                                     song = song,
-                                                    currentlyPlaying = playbackManager.currentSong?.id == song.id && playbackManager.activePlaylistId == pageContextId,
+                                                    currentlyPlaying = playbackManager.currentSong?.id == song.id,
                                                     isPlaying = isPlaying,
                                                     hasBlurBackground = hasBlurBackgroundMini,
                                                     useCustomControlsColor = useCustomControlsColor,
