@@ -1016,7 +1016,7 @@ class PlaybackManager private constructor(private val context: Context) {
 
     private var sortCaseSensitive = false
 
-    fun setSortSettings(option: String, ascending: Boolean, caseSensitive: Boolean = false) {
+    fun setSortSettings(option: String, ascending: Boolean, caseSensitive: Boolean) {
         sortOption = option
         isSortAscending = ascending
         sortCaseSensitive = caseSensitive
