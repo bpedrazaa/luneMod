@@ -85,7 +85,9 @@ fun SongOptionsBottomSheet(
     onDismiss: () -> Unit,
     onAddToPlaylistClick: () -> Unit,
     onDeleteClick: () -> Unit,
-    onInfoClick: () -> Unit = {}
+    onInfoClick: () -> Unit = {},
+    onGoToAlbum: (() -> Unit)? = null,
+    onGoToAlbumArtist: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val playbackManager = remember { PlaybackManager.getInstance(context) }
@@ -226,6 +228,76 @@ fun SongOptionsBottomSheet(
                         }
                     ) {
                         Text(stringResource(R.string.add_to_playlist), color = blurColors.textColor)
+                    }
+                }
+                val goToAlbum = onGoToAlbum
+                if (goToAlbum != null) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 1.dp)
+                            .bounceClick(),
+                        shape = RoundedCornerShape(4.dp),
+                        color = blurColors.itemContainerColor,
+                        border = blurColors.itemBorderColor?.let { BorderStroke(1.dp, it) }
+                    ) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            leadingContent = {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (blurColors.hasBlur) blurColors.primaryTint.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Default.Album,
+                                            contentDescription = null,
+                                            tint = if (blurColors.hasBlur) blurColors.primaryTint else MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            },
+                            modifier = Modifier.clickable(onClick = goToAlbum)
+                        ) {
+                            Text(stringResource(R.string.mod_open_album), color = blurColors.textColor)
+                        }
+                    }
+                }
+                val goToAlbumArtist = onGoToAlbumArtist
+                if (goToAlbumArtist != null) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 1.dp)
+                            .bounceClick(),
+                        shape = RoundedCornerShape(4.dp),
+                        color = blurColors.itemContainerColor,
+                        border = blurColors.itemBorderColor?.let { BorderStroke(1.dp, it) }
+                    ) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            leadingContent = {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (blurColors.hasBlur) blurColors.primaryTint.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Default.Person,
+                                            contentDescription = null,
+                                            tint = if (blurColors.hasBlur) blurColors.primaryTint else MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            },
+                            modifier = Modifier.clickable(onClick = goToAlbumArtist)
+                        ) {
+                            Text(stringResource(R.string.mod_open_album_artist), color = blurColors.textColor)
+                        }
                     }
                 }
                 Surface(

@@ -767,6 +767,43 @@ fun MainScreen(
         rawAllSongs.filter { !hiddenFolders.value.contains(it.folderName) }
     }
 
+    fun openAlbumByName(albumName: String, albumArtist: String) {
+        val albumSongs = visibleSongs.filter {
+            it.album.trim().equals(albumName.trim(), ignoreCase = true) &&
+                it.displayAlbumArtist.trim().equals(albumArtist.trim(), ignoreCase = true)
+        }
+        if (albumSongs.isEmpty()) return
+        selectedAlbum = Album(
+            id = Album.idFor(albumArtist, albumName),
+            name = albumSongs.first().album,
+            artist = albumSongs.first().displayAlbumArtist,
+            albumArtUri = albumSongs.first().albumArtUri,
+            coverUrl = albumSongs.first().coverUrl,
+            songs = albumSongs.sortedWith(compareBy({ it.trackNumber }, { it.title }))
+        )
+        isAlbumView = true
+        onIsPlayerExpandedChange(false)
+        onSelectedFolderChange("ALBUMS")
+    }
+
+    fun openAlbumArtistByName(albumArtistName: String) {
+        val albumArtistSongs = visibleSongs.filter {
+            it.displayAlbumArtist.trim().equals(albumArtistName.trim(), ignoreCase = true)
+        }
+        if (albumArtistSongs.isEmpty()) return
+        selectedAlbum = Album(
+            id = albumArtistName.hashCode().toLong(),
+            name = albumArtistName,
+            artist = "",
+            albumArtUri = albumArtistSongs.firstOrNull()?.albumArtUri,
+            coverUrl = albumArtistSongs.firstOrNull()?.coverUrl,
+            songs = albumArtistSongs
+        )
+        isAlbumView = false
+        onIsPlayerExpandedChange(false)
+        onSelectedFolderChange("ALBUM_ARTISTS")
+    }
+
     val contextId = remember(selectedFolder) {
         when (selectedFolder) {
             "RESUME", "ALL", "ALBUMS", "ARTISTS", "GENRES" -> -100L
@@ -3008,43 +3045,10 @@ fun MainScreen(
                 },
                 onRequestAudioPermission = onRequestAudioPermission,
                 onAlbumArtistClick = { albumArtistName ->
-                    val albumArtistSongs = visibleSongs.filter {
-                        it.displayAlbumArtist.trim().equals(albumArtistName.trim(), ignoreCase = true)
-                    }
-                    if (albumArtistSongs.isNotEmpty()) {
-                        val albumArtistPage = Album(
-                            id = albumArtistName.hashCode().toLong(),
-                            name = albumArtistName,
-                            artist = "",
-                            albumArtUri = albumArtistSongs.firstOrNull()?.albumArtUri,
-                            coverUrl = albumArtistSongs.firstOrNull()?.coverUrl,
-                            songs = albumArtistSongs
-                        )
-                        selectedAlbum = albumArtistPage
-                        isAlbumView = false
-                        onIsPlayerExpandedChange(false)
-                        onSelectedFolderChange("ALBUM_ARTISTS")
-                    }
+                    openAlbumArtistByName(albumArtistName)
                 },
                 onAlbumClick = { albumName, albumArtist ->
-                    val albumSongs = visibleSongs.filter {
-                        it.album.trim().equals(albumName.trim(), ignoreCase = true) &&
-                            it.displayAlbumArtist.trim().equals(albumArtist.trim(), ignoreCase = true)
-                    }
-                    if (albumSongs.isNotEmpty()) {
-                        val albumToOpen = Album(
-                            id = Album.idFor(albumArtist, albumName),
-                            name = albumSongs.first().album,
-                            artist = albumSongs.first().displayAlbumArtist,
-                            albumArtUri = albumSongs.first().albumArtUri,
-                            coverUrl = albumSongs.first().coverUrl,
-                            songs = albumSongs.sortedWith(compareBy({ it.trackNumber }, { it.title }))
-                        )
-                        selectedAlbum = albumToOpen
-                        isAlbumView = true
-                        onIsPlayerExpandedChange(false)
-                        onSelectedFolderChange("ALBUMS")
-                    }
+                    openAlbumByName(albumName, albumArtist)
                 },
                 expansionFraction = expansionProgress,
                 miniCoverBounds = miniCoverBounds
@@ -3102,21 +3106,8 @@ fun MainScreen(
                 onSelectedFolderChange("ALBUMS")
             },
             onNavigateToAlbumArtist = { albumArtistName ->
-                val artistSongs = visibleSongs.filter {
-                    it.displayAlbumArtist.trim().equals(albumArtistName.trim(), ignoreCase = true)
-                }
-                val albumArtist = Album(
-                    id = albumArtistName.hashCode().toLong(),
-                    name = albumArtistName,
-                    artist = "",
-                    albumArtUri = artistSongs.firstOrNull()?.albumArtUri,
-                    coverUrl = artistSongs.firstOrNull()?.coverUrl,
-                    songs = artistSongs
-                )
-                selectedAlbum = albumArtist
-                isAlbumView = false
                 showSearchScreen = false
-                onSelectedFolderChange("ALBUM_ARTISTS")
+                openAlbumArtistByName(albumArtistName)
             },
             onNavigateToPlaylist = { playlist ->
                 selectedPlaylist = playlist
@@ -3143,11 +3134,22 @@ fun MainScreen(
         )
     }
     if (showOptionsSheet && optionsSong != null) {
+        val sheetSong = optionsSong!!
         SongOptionsBottomSheet(
-            song = optionsSong!!,
+            song = sheetSong,
             onDismiss = { showOptionsSheet = false },
             onInfoClick = { infoSong = optionsSong },
             onAddToPlaylistClick = { showMainAddToPlaylistDialog = true },
+            onGoToAlbum = if (sheetSong.album.isBlank()) null else ({
+                showOptionsSheet = false
+                showSearchScreen = false
+                openAlbumByName(sheetSong.album, sheetSong.displayAlbumArtist)
+            }),
+            onGoToAlbumArtist = if (sheetSong.displayAlbumArtist.isBlank()) null else ({
+                showOptionsSheet = false
+                showSearchScreen = false
+                openAlbumArtistByName(sheetSong.displayAlbumArtist)
+            }),
             onDeleteClick = {
                 songToDelete = optionsSong
                 showDeleteDialog = true
