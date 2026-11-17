@@ -708,7 +708,6 @@ fun UnifiedMarqueeHeader(
         val chipGap = if (isCompact) 2.dp else 6.dp
         val featureGap = if (isCompact) 2.dp else 4.dp
         val infoGap = if (isCompact) 2.dp else 10.dp
-        val chipSpacing = 6.dp
 
         val context = LocalContext.current
         val titleLabel = stringResource(R.string.edit_title)
@@ -759,38 +758,35 @@ fun UnifiedMarqueeHeader(
 
             Spacer(modifier = Modifier.height(titleGap))
 
+            if (trackPosition != null) {
+                ScrollingHeaderLine(spacingPx = spacingPx, speedPxPerSec = speedPxPerSec) {
+                    HeaderChip(
+                        text = trackPosition,
+                        style = HeaderChipStyle.Position,
+                        useBlurControls = useBlurControls,
+                        blurContainerColor = blurContainerColor,
+                        isAmoled = isAmoled,
+                        isCompact = isCompact,
+                        onLongClick = { copyToClipboard(context, positionLabel, trackPosition) }
+                    )
+                }
+                Spacer(modifier = Modifier.height(chipGap))
+            }
+
             if (song.album.isNotBlank()) {
                 ScrollingHeaderLine(spacingPx = spacingPx, speedPxPerSec = speedPxPerSec) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(chipSpacing)
-                    ) {
-                        HeaderChip(
-                            text = song.album,
-                            style = HeaderChipStyle.Album,
-                            useBlurControls = useBlurControls,
-                            blurContainerColor = blurContainerColor,
-                            isAmoled = isAmoled,
-                            isCompact = isCompact,
-                            onClick = openAlbum,
-                            onClickLabel = openAlbumLabel,
-                            onLongClick = { copyToClipboard(context, albumLabel, song.album) },
-                            leadingIcon = Icons.Outlined.Album
-                        )
-                        if (trackPosition != null) {
-                            HeaderChip(
-                                text = trackPosition,
-                                style = HeaderChipStyle.Position,
-                                useBlurControls = useBlurControls,
-                                blurContainerColor = blurContainerColor,
-                                isAmoled = isAmoled,
-                                isCompact = isCompact,
-                                onClick = openAlbum,
-                                onClickLabel = openAlbumLabel,
-                                onLongClick = { copyToClipboard(context, positionLabel, trackPosition) }
-                            )
-                        }
-                    }
+                    HeaderChip(
+                        text = song.album,
+                        style = HeaderChipStyle.Album,
+                        useBlurControls = useBlurControls,
+                        blurContainerColor = blurContainerColor,
+                        isAmoled = isAmoled,
+                        isCompact = isCompact,
+                        onClick = openAlbum,
+                        onClickLabel = openAlbumLabel,
+                        onLongClick = { copyToClipboard(context, albumLabel, song.album) },
+                        leadingIcon = Icons.Outlined.Album
+                    )
                 }
                 Spacer(modifier = Modifier.height(chipGap))
             }
