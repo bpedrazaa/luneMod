@@ -42,7 +42,7 @@ fun ResumeScreen(
     isDarkTheme: Boolean = false,
     useCustomControlsColor: Boolean = false,
     controlsColorPalette: Int = 0,
-    onSongClick: (Song, List<Song>) -> Unit,
+    onSongClick: (Song, List<Song>, Long, String) -> Unit,
     onPlaylistClick: (Playlist) -> Unit,
     onArtistClick: (String) -> Unit,
     onAlbumClick: (Album) -> Unit = {},
@@ -185,7 +185,7 @@ fun ResumeScreen(
     }
 
     val recentlyAdded = remember(allSongs) {
-        allSongs.sortedByDescending { it.dateAdded }.take(10)
+        allSongs.sortedByDescending { it.dateAdded }.take(5)
     }
 
     val topArtistSongs = remember(allSongs, realTopArtistName) {
@@ -258,7 +258,7 @@ fun ResumeScreen(
                 topGenre = realTopGenreName,
                 totalPlays = totalPlays,
                 onArtistClick = onArtistClick,
-                onSongClick = { song -> onSongClick(song, allSongs) },
+                onSongClick = { song -> onSongClick(song, allSongs, -100L, "ALL") },
                 hasBlurBackground = hasBlurBackground,
                 isDarkTheme = isDarkTheme,
                 useCustomControlsColor = useCustomControlsColor,
@@ -281,7 +281,7 @@ fun ResumeScreen(
                     isDarkTheme = isDarkTheme,
                     useCustomControlsColor = useCustomControlsColor,
                     controlsColorPalette = controlsColorPalette,
-                    onSongClick = { song -> onSongClick(song, recommendations) }
+                    onSongClick = { song -> onSongClick(song, recommendations, -410L, "RESUME") }
                 )
             }
         }
@@ -351,7 +351,7 @@ fun ResumeScreen(
                 RecentlyAddedSection(
                     songs = recentlyAdded,
                     hasBlurBackground = hasBlurBackground,
-                    onSongClick = { song -> onSongClick(song, recentlyAdded) }
+                    onSongClick = { song -> onSongClick(song, recentlyAdded, -410L, "RESUME") }
                 )
             }
         }

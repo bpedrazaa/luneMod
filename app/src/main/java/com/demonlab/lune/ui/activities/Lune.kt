@@ -1548,9 +1548,9 @@ fun MainScreen(
                                 isDarkTheme = isDarkThemeMini,
                                 useCustomControlsColor = useCustomControlsColor,
                                 controlsColorPalette = controlsColorPalette,
-                                onSongClick = { song, listContext ->
+                                onSongClick = { song, listContext, queueId, category ->
                                     onCurrentSongChange(song)
-                                    playbackManager.play(song, listContext, -100L, category = "ALL", shuffleMode = playbackManager.isShuffle)
+                                    playbackManager.play(song, listContext, queueId, category = category, shuffleMode = playbackManager.isShuffle)
                                     onIsPlayingChange(true)
                                 },
                                 onPlaylistClick = { playlist ->
