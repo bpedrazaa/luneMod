@@ -281,7 +281,7 @@ fun ResumeScreen(
                     isDarkTheme = isDarkTheme,
                     useCustomControlsColor = useCustomControlsColor,
                     controlsColorPalette = controlsColorPalette,
-                    onSongClick = { song -> onSongClick(song, allSongs) }
+                    onSongClick = { song -> onSongClick(song, recommendations) }
                 )
             }
         }
@@ -351,7 +351,7 @@ fun ResumeScreen(
                 RecentlyAddedSection(
                     songs = recentlyAdded,
                     hasBlurBackground = hasBlurBackground,
-                    onSongClick = { song -> onSongClick(song, allSongs) }
+                    onSongClick = { song -> onSongClick(song, recentlyAdded) }
                 )
             }
         }
